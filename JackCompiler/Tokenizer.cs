@@ -55,9 +55,10 @@ public class Tokenizer
 
     /// <summary>
     /// Calculates number token end position.
+    /// Token should start with digit and end with non-digit character. 
     /// </summary>
     /// <param name="start">From where start token calculation</param>
-    /// <returns>Token end index (exclusive). Returns same value as start if there is no token</returns>
+    /// <returns>Token end index from start (exclusive)</returns>
     private int Number(int start)
     {
         var endToken = start;
@@ -66,6 +67,12 @@ public class Tokenizer
         return endToken;
     }
 
+    /// <summary>
+    /// Calculates comment token end position.
+    /// Starts with // and ends with \n
+    /// </summary>
+    /// <param name="start">Token start calculation index</param>
+    /// <returns>Token end index from start (exclusive)</returns>
     private int Comment(int start)
     {
         var endToken = start;
@@ -78,6 +85,11 @@ public class Tokenizer
         return endToken;
     }
 
+    /// <summary>
+    /// Calculates white spaces token end position.
+    /// </summary>
+    /// <param name="start">Token start calculation index</param>
+    /// <returns>Token end index from start (exclusive)</returns>
     private int WhiteSpaces(int start)
     {
         var end = start;
@@ -86,6 +98,11 @@ public class Tokenizer
         return end;
     }
 
+    /// <summary>
+    /// Calculates new lines token end position. Consist of one or more \n
+    /// </summary>
+    /// <param name="start"></param>
+    /// <returns></returns>
     private int NewLines(int start)
     {
         var end = start;
