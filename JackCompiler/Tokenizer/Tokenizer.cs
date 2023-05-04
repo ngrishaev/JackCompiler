@@ -15,7 +15,7 @@ public class Tokenizer
     private int _cursor;
 
     private readonly List<Func<int, int>> _unimportantTokensSpecification;
-    private readonly Dictionary<Func<int, int>, TokenType> _mainTokensSpecification;
+    private readonly Dictionary<Func<int, int>, Func<string, Token>> _mainTokensSpecifications;
 
     public Tokenizer(string src)
     {
@@ -29,13 +29,13 @@ public class Tokenizer
             NewLines,
         };
         
-        _mainTokensSpecification = new ()
+        _mainTokensSpecifications = new ()
         {
-            {String, TokenType.StringConst},
-            {Number, TokenType.IntConst},
-            {Keyword, TokenType.Keyword},
-            {Symbol, TokenType.Symbol},
-            {Identifier, TokenType.Identifier},
+            {String, (value) => new StringConstToken(value)},
+            {Number, (value) => new IntConstToken(value)},
+            {Keyword, (value) => new KeywordToken(value)},
+            {Symbol, (value) => new SymbolToken(value)},
+            {Identifier, (value) => new IdentifierToken(value)},
         };
 
         SkipUnimportantTokens();
@@ -43,12 +43,12 @@ public class Tokenizer
 
     public Token Advance()
     {
-        foreach (var tokenSpec in _mainTokensSpecification)
+        foreach (var (tokenSpecification, tokenConstructor) in _mainTokensSpecifications)
         {
-            var tokenEnd = tokenSpec.Key(_cursor);
+            var tokenEnd = tokenSpecification(_cursor);
             if (tokenEnd != _cursor)
             {
-                var token = new Token(tokenSpec.Value, _src.Substring(_cursor, tokenEnd - _cursor));
+                var token = tokenConstructor(_src.Substring(_cursor, tokenEnd - _cursor));
                 _cursor = tokenEnd;
                 SkipUnimportantTokens();
                 return token;
@@ -178,28 +178,3 @@ public class Tokenizer
         _cursor != _src.Length;
 }
 
-public class Token
-{
-    public readonly TokenType Type;
-    public readonly string Value;
-
-    public Token(TokenType type, string value)
-    {
-        Type = type;
-        Value = value;
-    }
-
-    public override string ToString()
-    {
-        return $"{Type}:{Value}";
-    }
-}
-
-public enum TokenType
-{
-    Keyword,
-    Symbol,
-    Identifier,
-    IntConst,
-    StringConst
-}
