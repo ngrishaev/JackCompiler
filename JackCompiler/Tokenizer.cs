@@ -5,14 +5,14 @@ public class Tokenizer
     private readonly string _src;
     private int _cursor;
 
-    private readonly List<Func<int, int>> _skippableTokensSpecification;
+    private readonly List<Func<int, int>> _unimportantTokensSpecification;
 
     public Tokenizer(string src)
     {
         _src = src;
         _cursor = 0;
 
-        _skippableTokensSpecification = new List<Func<int, int>>()
+        _unimportantTokensSpecification = new List<Func<int, int>>()
         {
             Comment,
             WhiteSpaces,
@@ -55,7 +55,7 @@ public class Tokenizer
         {
             start = end;
 
-            foreach (var specification in _skippableTokensSpecification)
+            foreach (var specification in _unimportantTokensSpecification)
                 end = specification(end);
         } while (start != end);
 
