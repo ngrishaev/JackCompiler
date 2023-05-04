@@ -43,7 +43,7 @@ public class Tokenizer
         
         var token = tokenizer.Advance();
         
-        Assert.AreEqual(token.ToString(), "IntConst:42");
+        Assert.AreEqual("IntConst:42", token.ToString());
     }
     
     [Test]
@@ -53,7 +53,7 @@ public class Tokenizer
         
         var token = tokenizer.Advance();
         
-        Assert.AreEqual(token.ToString(), "IntConst:43");
+        Assert.AreEqual("IntConst:43", token.ToString());
     }
     
     [Test]
@@ -63,7 +63,7 @@ public class Tokenizer
         
         var token = tokenizer.Advance();
         
-        Assert.AreEqual(token.ToString(), "IntConst:42");
+        Assert.AreEqual("IntConst:42", token.ToString());
     }
     
     [Test]
@@ -73,7 +73,7 @@ public class Tokenizer
         
         var token = tokenizer.Advance();
         
-        Assert.AreEqual(token.ToString(), "IntConst:42");
+        Assert.AreEqual("IntConst:42", token.ToString());
     }
     
     [Test]
@@ -84,8 +84,8 @@ public class Tokenizer
         var token1 = tokenizer.Advance();
         var token2 = tokenizer.Advance();
         
-        Assert.AreEqual(token1.ToString(), "IntConst:42");
-        Assert.AreEqual(token2.ToString(), "IntConst:43");
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:43", token2.ToString());
     }
     
     [Test]
@@ -97,8 +97,8 @@ public class Tokenizer
         var token1 = tokenizer.Advance();
         var token2 = tokenizer.Advance();
         
-        Assert.AreEqual(token1.ToString(), "IntConst:42");
-        Assert.AreEqual(token2.ToString(), "IntConst:43");
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:43", token2.ToString());
     }
     
     [Test]
@@ -112,8 +112,8 @@ public class Tokenizer
         var token1 = tokenizer.Advance();
         var token2 = tokenizer.Advance();
 
-        Assert.AreEqual(token1.ToString(), "IntConst:42");
-        Assert.AreEqual(token2.ToString(), "IntConst:43");
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:43", token2.ToString());
     }
     
     [Test]
@@ -128,7 +128,31 @@ public class Tokenizer
         var token1 = tokenizer.Advance();
         var token2 = tokenizer.Advance();
 
-        Assert.AreEqual(token1.ToString(), "IntConst:42");
-        Assert.AreEqual(token2.ToString(), "IntConst:43");
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:43", token2.ToString());
+    }
+    
+    [Test]
+    public void NumberStringNumber()
+    {
+        var tokenizer = new JackCompiler.Tokenizer(
+            @"42""string""43");
+
+        var token1 = tokenizer.Advance();
+        var token2 = tokenizer.Advance();
+
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("IntConst:43", token2.ToString());
+    }
+    
+    [Test]
+    public void StringToken()
+    {
+        var tokenizer = new JackCompiler.Tokenizer(@"""string""");
+
+        var token1 = tokenizer.Advance();
+
+        Assert.AreEqual("StringConst:\"string\"", token1.ToString());
     }
 }
