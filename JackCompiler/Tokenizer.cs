@@ -2,6 +2,15 @@
 
 public class Tokenizer
 {
+    private readonly string[] _keywords = new[]
+    {
+        "class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean", "void",
+        "true", "false", "null", "this", "let", "do", "if", "else", "while", "return"
+    };
+
+    private const string _symbols = "{}()[].,;+-*/&|<>=~";
+    
+    
     private readonly string _src;
     private int _cursor;
 
@@ -24,6 +33,9 @@ public class Tokenizer
         {
             {String, TokenType.StringConst},
             {Number, TokenType.IntConst},
+            {Keyword, TokenType.Keyword},
+            {Symbol, TokenType.Symbol},
+            {Identifier, TokenType.Identifier},
         };
 
         SkipUnimportantTokens();
@@ -85,6 +97,37 @@ public class Tokenizer
         while (endToken < _src.Length && _src[endToken] != '"')
             endToken++;
         return ++endToken;
+    }
+    
+    private int Symbol(int start)
+    {
+        return _symbols.Contains(_src[start]) ? start + 1 : start;
+    }
+    
+    private int Identifier(int start)
+    {
+        var end = start;
+        
+        if (char.IsDigit(_src[start]))
+            return start;
+        
+        while (end < _src.Length && (char.IsLetterOrDigit(_src[end]) || _src[end] == '_'))
+            end++;
+
+        return end;
+    }
+    
+    private int Keyword(int start)
+    {
+        var end = start;
+        while (end < _src.Length && char.IsLetter(_src[end]))
+            end++;
+        
+        if(end == start)
+            return start;
+        
+        var keyword = _src.Substring(start, end - start);
+        return _keywords.Contains(keyword) ? end : start;
     }
 
     /// <summary>
