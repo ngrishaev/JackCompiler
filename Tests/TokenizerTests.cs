@@ -146,6 +146,20 @@ public class Tokenizer
         Assert.AreEqual("StringConst:\"string\"", token2.ToString());
         Assert.AreEqual("IntConst:43", token3.ToString());
     }
+    [Test]
+    public void Number_StringWithNumber_Number()
+    {
+        var tokenizer = new JackCompiler.Tokenizer(
+            @"42""string42""43");
+
+        var token1 = tokenizer.Advance();
+        var token2 = tokenizer.Advance();
+        var token3 = tokenizer.Advance();
+
+        Assert.AreEqual("IntConst:42", token1.ToString());
+        Assert.AreEqual("StringConst:\"string42\"", token2.ToString());
+        Assert.AreEqual("IntConst:43", token3.ToString());
+    }
     
     [Test]
     public void StringToken()
