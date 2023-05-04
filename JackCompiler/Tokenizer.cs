@@ -6,6 +6,7 @@ public class Tokenizer
     private int _cursor;
 
     private readonly List<Func<int, int>> _unimportantTokensSpecification;
+    private readonly Dictionary<Func<int, int>, TokenType> _mainTokensSpecification;
 
     public Tokenizer(string src)
     {
@@ -18,28 +19,28 @@ public class Tokenizer
             WhiteSpaces,
             NewLines,
         };
+        
+        _mainTokensSpecification = new ()
+        {
+            {String, TokenType.StringConst},
+            {Number, TokenType.IntConst},
+        };
 
         SkipUnimportantTokens();
     }
 
     public Token Advance()
     {
-        var numberEnd = Number(_cursor);
-        if (numberEnd != _cursor)
+        foreach (var tokenSpec in _mainTokensSpecification)
         {
-            var token = new Token(TokenType.IntConst, _src.Substring(_cursor, numberEnd - _cursor));
-            _cursor = numberEnd;
-            SkipUnimportantTokens();
-            return token;
-        }
-        
-        var stringEnd = String(_cursor);
-        if (stringEnd != _cursor)
-        {
-            var token = new Token(TokenType.StringConst, _src.Substring(_cursor, stringEnd - _cursor));
-            _cursor = stringEnd;
-            SkipUnimportantTokens();
-            return token;
+            var tokenEnd = tokenSpec.Key(_cursor);
+            if (tokenEnd != _cursor)
+            {
+                var token = new Token(tokenSpec.Value, _src.Substring(_cursor, tokenEnd - _cursor));
+                _cursor = tokenEnd;
+                SkipUnimportantTokens();
+                return token;
+            }
         }
 
         throw new Exception(
