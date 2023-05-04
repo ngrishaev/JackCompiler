@@ -32,6 +32,15 @@ public class Tokenizer
             SkipUnimportantTokens();
             return token;
         }
+        
+        var stringEnd = String(_cursor);
+        if (stringEnd != _cursor)
+        {
+            var token = new Token(TokenType.StringConst, _src.Substring(_cursor, stringEnd - _cursor));
+            _cursor = stringEnd;
+            SkipUnimportantTokens();
+            return token;
+        }
 
         throw new Exception(
             $"Error while parsing at position {_cursor}. Rest of the string: {_src.Substring(_cursor)}");
@@ -65,6 +74,16 @@ public class Tokenizer
         while (endToken < _src.Length && char.IsDigit(_src[endToken]))
             endToken++;
         return endToken;
+    }
+
+    private int String(int start)
+    {
+        if(_src[start] != '"')
+            return start;
+        var endToken = start + 1;
+        while (endToken < _src.Length && _src[endToken] != '"')
+            endToken++;
+        return ++endToken;
     }
 
     /// <summary>
