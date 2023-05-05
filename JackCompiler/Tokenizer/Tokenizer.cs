@@ -63,13 +63,11 @@ public class Tokenizer
 
     public bool TryAdvance()
     {
-        if (HasMoreTokens())
-        {
-            Advance();
-            return true;
-        }
-
-        return false;
+        if (!HasMoreTokens())
+            return false;
+        
+        Advance();
+        return true;
     }
 
     private void SkipUnimportantTokens()

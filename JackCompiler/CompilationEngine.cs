@@ -75,15 +75,16 @@ public class CompilationEngine
         return $@"<{tag}> {EatType()} </{tag}>";
     }
 
-    private string CompileSubroutine()
+    public string CompileSubroutine()
     {
         return $"<subroutineDec>{Environment.NewLine}" +
                $"<keyword> {EatAny("constructor", "function", "method")} </keyword>{Environment.NewLine}" +
                $"{CompileTypeAndVoid()}{Environment.NewLine}" +
-               $"<identifier>{EatIdentifier()}<identifier>{Environment.NewLine}" +
-               $"<symbol>{Eat("(")}</symbol>{CompileParameterList()}{Environment.NewLine}" +
-               $"<symbol>{Eat(")")}</symbol>{Environment.NewLine}" +
-               $"{CompileSubroutineBody()}{Environment.NewLine}" +
+               $"<identifier> {EatIdentifier()} <identifier>{Environment.NewLine}" +
+               $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
+               $"{CompileParameterList()}" +
+               $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
+               $"{CompileSubroutineBody()}" +
                $"</subroutineDec>{Environment.NewLine}";
     }
 
@@ -91,19 +92,21 @@ public class CompilationEngine
     {
         return $"<subroutineBody>{Environment.NewLine}" +
                $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-               $"{CompileVarDecZeroOrMore()}" +
+               $"{CompileVarDecOneOrMore()}{Environment.NewLine}" +
                $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
                $"</subroutineBody>{Environment.NewLine}";
         
-        string CompileVarDecZeroOrMore()
+        string CompileVarDecOneOrMore()
         {
-            var result = Environment.NewLine;
+            var result = "";
 
             while (_tokenizer.CurrentToken.Value is "var")
                 result += $"<varDec>{Environment.NewLine}" +
-                          $"<keyword> {Eat("var")} <keyword>" +
+                          $"<keyword> {Eat("var")} <keyword>{Environment.NewLine}" +
                           $"{CompileType()}{Environment.NewLine}" +
-                          $"{CompileZeroOrMoreVarNameDeclarations()}" +
+                          $"<identifier> {EatIdentifier()} </identifier>" +
+                          $"{CompileZeroOrMoreVarNameDeclarations()}{Environment.NewLine}" +
+                          $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
                           $"</varDec>{Environment.NewLine}"; 
 
             return result.TrimEnd(Environment.NewLine.ToCharArray());
@@ -118,13 +121,38 @@ public class CompilationEngine
 
     private string CompileParameterList()
     {
-        // TODO
-        return "";
+        // TODO: in progress
+        var result = $"<parameterList>{Environment.NewLine}";
+        if (IsType(_tokenizer.CurrentToken))
+        {
+            result += $"{CompileType()}{Environment.NewLine}" +
+                      $"<identifier> {EatIdentifier()} </identifier>{Environment.NewLine}" +
+                      $"{CompileParametersVariablesNames()}{Environment.NewLine}";
+        }
+                     
+        return result + $"</parameterList>{Environment.NewLine}";
+        
+        string CompileParametersVariablesNames()
+        {
+            var variablesCompilation = "";
+            while (_tokenizer.CurrentToken.Value is ",")
+                variablesCompilation += $"<symbol> {Eat(",")} </symbol>{Environment.NewLine}" +
+                                        $"{CompileType()}{Environment.NewLine}" +
+                                        $"<identifier> {EatIdentifier()} </identifier>{Environment.NewLine}";
+
+            return variablesCompilation.TrimEnd(Environment.NewLine.ToCharArray());
+        }
+
     }
 
-    private void CompileStatements()
+    private bool IsType(Token token) =>
+        token.Value is "int" or "char" or "boolean" ||
+        token is IdentifierToken;
+
+    private string CompileStatements()
     {
-        
+        // TODO
+        return "";
     }
     
     private void CompileDo()

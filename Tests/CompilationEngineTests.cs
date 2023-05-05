@@ -51,6 +51,17 @@ public class CompilationEngineTests
                         $"<symbol> ; </symbol>{Environment.NewLine}" +
                         $"</classVarDec>", result);
     }
+    
+    [Test]
+    public void Subroutine()
+    {
+        var engine = new CompilationEngine("method void run(int x, int y, Point p) {" +
+                                           "var int x, y;" +
+                                           "var Point p;" +
+                                           "}");
+
+        var result = engine.CompileSubroutine();
+    }
 
     [Test]
     public void TestClassWithFields()
