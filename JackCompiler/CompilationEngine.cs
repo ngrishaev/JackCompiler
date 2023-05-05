@@ -55,18 +55,18 @@ public class CompilationEngine
                $"{CompileZeroOrMoreVarNameDeclarations()}{Environment.NewLine}" +
                $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
                $"</classVarDec>{Environment.NewLine}";
+    }
+    
+    private string CompileZeroOrMoreVarNameDeclarations()
+    {
+        var result = Environment.NewLine;
+        while (_tokenizer.CurrentToken.Value is ",")
+            result += $"<symbol> {Eat(",")} </symbol>"
+                      + Environment.NewLine
+                      + $"<identifier> {EatIdentifier()} </identifier>"
+                      + Environment.NewLine;
 
-        string CompileZeroOrMoreVarNameDeclarations()
-        {
-            var result = Environment.NewLine;
-            while (_tokenizer.CurrentToken.Value is ",")
-                result += $"<symbol> {Eat(",")} </symbol>"
-                          + Environment.NewLine
-                          + $"<identifier> {EatIdentifier()} </identifier>"
-                          + Environment.NewLine;
-
-            return result.TrimEnd(Environment.NewLine.ToCharArray());
-        }
+        return result.TrimEnd(Environment.NewLine.ToCharArray());
     }
 
     private string CompileType()
@@ -89,9 +89,25 @@ public class CompilationEngine
 
     private string CompileSubroutineBody()
     {
-        return $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-               
-               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}";
+        return $"<subroutineBody>{Environment.NewLine}" +
+               $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
+               $"{CompileVarDecZeroOrMore()}" +
+               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
+               $"</subroutineBody>{Environment.NewLine}";
+        
+        string CompileVarDecZeroOrMore()
+        {
+            var result = Environment.NewLine;
+
+            while (_tokenizer.CurrentToken.Value is "var")
+                result += $"<varDec>{Environment.NewLine}" +
+                          $"<keyword> {Eat("var")} <keyword>" +
+                          $"{CompileType()}{Environment.NewLine}" +
+                          $"{CompileZeroOrMoreVarNameDeclarations()}" +
+                          $"</varDec>{Environment.NewLine}"; 
+
+            return result.TrimEnd(Environment.NewLine.ToCharArray());
+        }
     }
 
     private string CompileTypeAndVoid()
@@ -102,14 +118,10 @@ public class CompilationEngine
 
     private string CompileParameterList()
     {
+        // TODO
         return "";
     }
-    
-    private void CompileVarDec()
-    {
-        
-    }
-    
+
     private void CompileStatements()
     {
         
