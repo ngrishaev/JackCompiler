@@ -17,6 +17,8 @@ public class Tokenizer
     private readonly List<Func<int, int>> _unimportantTokensSpecification;
     private readonly Dictionary<Func<int, int>, Func<string, Token>> _mainTokensSpecifications;
 
+    public Token CurrentToken { get; private set; }
+
     public Tokenizer(string src)
     {
         _src = src;
@@ -43,20 +45,31 @@ public class Tokenizer
 
     public Token Advance()
     {
-        foreach (var (tokenSpecification, tokenConstructor) in _mainTokensSpecifications)
+        foreach (var (tokenExtractor, tokenConstructor) in _mainTokensSpecifications)
         {
-            var tokenEnd = tokenSpecification(_cursor);
+            var tokenEnd = tokenExtractor(_cursor);
             if (tokenEnd != _cursor)
             {
-                var token = tokenConstructor(_src.Substring(_cursor, tokenEnd - _cursor));
+                CurrentToken = tokenConstructor(_src.Substring(_cursor, tokenEnd - _cursor));
                 _cursor = tokenEnd;
                 SkipUnimportantTokens();
-                return token;
+                return CurrentToken;
             }
         }
 
         throw new Exception(
             $"Error while parsing at position {_cursor}. Rest of the string: {_src.Substring(_cursor)}");
+    }
+
+    public bool TryAdvance()
+    {
+        if (HasMoreTokens())
+        {
+            Advance();
+            return true;
+        }
+
+        return false;
     }
 
     private void SkipUnimportantTokens()

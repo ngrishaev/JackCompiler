@@ -65,5 +65,5 @@ public enum TokenType
     Symbol,
     Identifier,
     IntConst,
-    StringConst
+    StringConst,
 }
