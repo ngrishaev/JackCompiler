@@ -32,7 +32,7 @@ public class CompilationEngineTests
                         $"<keyword> int </keyword>{Environment.NewLine}" +
                         $"<identifier> x </identifier>{Environment.NewLine}" +
                         $"<symbol> ; </symbol>{Environment.NewLine}" +
-                        $"</classVarDec>", result);
+                        $"</classVarDec>{Environment.NewLine}", result);
     }
 
     [Test]
@@ -49,18 +49,66 @@ public class CompilationEngineTests
                         $"<symbol> , </symbol>{Environment.NewLine}" +
                         $"<identifier> y </identifier>{Environment.NewLine}" +
                         $"<symbol> ; </symbol>{Environment.NewLine}" +
-                        $"</classVarDec>", result);
+                        $"</classVarDec>{Environment.NewLine}", result);
     }
     
     [Test]
-    public void Subroutine()
+    public void ReturnSubroutine()
     {
-        var engine = new CompilationEngine("method void run(int x, int y, Point p) {" +
+        var engine = new CompilationEngine("method int run(int x, int y, Point p) {" +
                                            "var int x, y;" +
                                            "var Point p;" +
+                                           "return 15;" +
                                            "}");
 
         var result = engine.CompileSubroutine();
+
+        Assert.AreEqual($"<subroutineDec>{Environment.NewLine}" +
+                        $"<keyword> method </keyword>{Environment.NewLine}" +
+                        $"<keyword> int </keyword>{Environment.NewLine}" +
+                        $"<identifier> run <identifier>{Environment.NewLine}" +
+                        $"<symbol> ( </symbol>{Environment.NewLine}" +
+                        $"<parameterList>{Environment.NewLine}" +
+                        $"<keyword> int </keyword>{Environment.NewLine}" +
+                        $"<identifier> x </identifier>{Environment.NewLine}" +
+                        $"<symbol> , </symbol>{Environment.NewLine}" +
+                        $"<keyword> int </keyword>{Environment.NewLine}" +
+                        $"<identifier> y </identifier>{Environment.NewLine}" +
+                        $"<symbol> , </symbol>{Environment.NewLine}" +
+                        $"<identifier> Point </identifier>{Environment.NewLine}" +
+                        $"<identifier> p </identifier>{Environment.NewLine}" +
+                        $"</parameterList>{Environment.NewLine}" +
+                        $"<symbol> ) </symbol>{Environment.NewLine}" +
+                        $"<subroutineBody>{Environment.NewLine}" +
+                        $"<symbol> {{ </symbol>{Environment.NewLine}" +
+                        $"<varDec>{Environment.NewLine}" +
+                        $"<keyword> var <keyword>{Environment.NewLine}" +
+                        $"<keyword> int </keyword>{Environment.NewLine}" +
+                        $"<identifier> x </identifier>{Environment.NewLine}" +
+                        $"<symbol> , </symbol>{Environment.NewLine}" +
+                        $"<identifier> y </identifier>{Environment.NewLine}" +
+                        $"<symbol> ; </symbol>{Environment.NewLine}" +
+                        $"</varDec>{Environment.NewLine}" +
+                        $"<varDec>{Environment.NewLine}" +
+                        $"<keyword> var <keyword>{Environment.NewLine}" +
+                        $"<identifier> Point </identifier>{Environment.NewLine}" +
+                        $"<identifier> p </identifier>{Environment.NewLine}" +
+                        $"<symbol> ; </symbol>{Environment.NewLine}" +
+                        $"</varDec>{Environment.NewLine}" +
+                        $"<statements>{Environment.NewLine}" +
+                        $"<returnStatement>{Environment.NewLine}" +
+                        $"<keyword> return </keyword>{Environment.NewLine}" +
+                        $"<expression>{Environment.NewLine}" +
+                        $"<term>{Environment.NewLine}" +
+                        $"<integerConstant> 15 </integerConstant>{Environment.NewLine}" +
+                        $"</term>{Environment.NewLine}" +
+                        $"</expression>{Environment.NewLine}" +
+                        $"<symbol> ; </symbol>{Environment.NewLine}" +
+                        $"</returnStatement>{Environment.NewLine}" +
+                        $"</statements>{Environment.NewLine}" +
+                        $"<symbol> }} </symbol>{Environment.NewLine}" +
+                        $"</subroutineBody>{Environment.NewLine}" +
+                        $"</subroutineDec>{Environment.NewLine}", result);
     }
 
     [Test]
