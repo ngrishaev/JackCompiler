@@ -17,7 +17,7 @@ public class CompilationEngine
     {
         return $"<class>{Environment.NewLine}" +
                $"<keyword> {Eat("class")} </keyword>{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>{Environment.NewLine}" +
+               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
                $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
                $"{CompileClassVarDecZeroOrMore()}{CompileSubroutineZeroOrMore()}" +
                $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
@@ -49,7 +49,7 @@ public class CompilationEngine
         return $"<classVarDec>{Environment.NewLine}" +
                $"<keyword> {EatAny("static", "field")} </keyword>{Environment.NewLine}" +
                $"{CompileType()}{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>" +
+               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>" +
                $"{CompileZeroOrMoreVarNameDeclarations()}{Environment.NewLine}" +
                $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
                $"</classVarDec>{Environment.NewLine}";
@@ -61,7 +61,7 @@ public class CompilationEngine
         while (_tokenizer.CurrentToken.Value is ",")
             result += $"<symbol> {Eat(",")} </symbol>"
                       + Environment.NewLine
-                      + $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>"
+                      + $"<identifier> {EatTokenOfType<Identifier>()} </identifier>"
                       + Environment.NewLine;
 
         return result.TrimEnd(Environment.NewLine.ToCharArray());
@@ -69,7 +69,7 @@ public class CompilationEngine
 
     private string CompileType()
     {
-        var tag = _tokenizer.CurrentToken is KeywordToken ? "keyword" : "identifier";
+        var tag = _tokenizer.CurrentToken is Keyword ? "keyword" : "identifier";
         return $@"<{tag}> {EatTypeDeclaration()} </{tag}>";
     }
 
@@ -78,7 +78,7 @@ public class CompilationEngine
         return $"<subroutineDec>{Environment.NewLine}" +
                $"<keyword> {EatAny("constructor", "function", "method")} </keyword>{Environment.NewLine}" +
                $"{CompileTypeAndVoid()}{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<IdentifierToken>()} <identifier>{Environment.NewLine}" +
+               $"<identifier> {EatTokenOfType<Identifier>()} <identifier>{Environment.NewLine}" +
                $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
                $"{CompileParameterList()}" +
                $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
@@ -103,7 +103,7 @@ public class CompilationEngine
                 result += $"<varDec>{Environment.NewLine}" +
                           $"<keyword> {Eat("var")} <keyword>{Environment.NewLine}" +
                           $"{CompileType()}{Environment.NewLine}" +
-                          $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>" +
+                          $"<identifier> {EatTokenOfType<Identifier>()} </identifier>" +
                           $"{CompileZeroOrMoreVarNameDeclarations()}{Environment.NewLine}" +
                           $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
                           $"</varDec>{Environment.NewLine}"; 
@@ -114,7 +114,7 @@ public class CompilationEngine
 
     private string CompileTypeAndVoid()
     {
-        var tag = _tokenizer.CurrentToken is KeywordToken ? "keyword" : "identifier";
+        var tag = _tokenizer.CurrentToken is Keyword ? "keyword" : "identifier";
         return $@"<{tag}> {EatReturnTypeDeclaration()} </{tag}>";
     }
 
@@ -124,7 +124,7 @@ public class CompilationEngine
         if (IsType(_tokenizer.CurrentToken))
         {
             result += $"{CompileType()}{Environment.NewLine}" +
-                      $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>{Environment.NewLine}" +
+                      $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
                       $"{CompileParametersVariablesNames()}{Environment.NewLine}";
         }
                      
@@ -136,7 +136,7 @@ public class CompilationEngine
             while (_tokenizer.CurrentToken.Value is ",")
                 variablesCompilation += $"<symbol> {Eat(",")} </symbol>{Environment.NewLine}" +
                                         $"{CompileType()}{Environment.NewLine}" +
-                                        $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>{Environment.NewLine}";
+                                        $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
 
             return variablesCompilation.TrimEnd(Environment.NewLine.ToCharArray());
         }
@@ -145,28 +145,27 @@ public class CompilationEngine
 
     private bool IsType(Token token) =>
         token.Value is "int" or "char" or "boolean" ||
-        token is IdentifierToken;
+        token is Identifier;
 
     private string CompileStatements()
     {
-        // TODO
         var result = $"<statements>{Environment.NewLine}";
         while (_tokenizer.CurrentToken.Value is "let" or "if" or "while" or "do" or "return")
         {
             switch (_tokenizer.CurrentToken.Value)
             {
-                // case "let":
-                //     result += CompileLet();
-                //     break;
-                // case "if":
-                //     result += CompileIf();
-                //     break;
-                // case "while":
-                //     result += CompileWhile();
-                //     break;
-                // case "do":
-                //     result += CompileDo();
-                //     break;
+                case "let":
+                    result += CompileLet();
+                    break;
+                case "if":
+                    result += CompileIf();
+                    break;
+                case "while":
+                    result += CompileWhile();
+                    break;
+                case "do":
+                    result += CompileDo();
+                    break;
                 case "return":
                     result += CompileReturn();
                     break;
@@ -175,19 +174,44 @@ public class CompilationEngine
         return result + $"</statements>{Environment.NewLine}";
     }
     
-    private void CompileDo()
+    private string CompileDo()
     {
-        
+        return $"<doStatement>{Environment.NewLine}" +
+               $"<keyword> {Eat("do")} </keyword>{Environment.NewLine}" +
+               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>" +
+               $"{CompileSubroutineCallBody()}" +
+               $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}";
     }
     
-    private void CompileLet()
+    private string CompileLet()
     {
+        var result = $"<letStatement>{Environment.NewLine}" +
+                     $"<keyword> {Eat("let")} </keyword>{Environment.NewLine}" +
+                     $"<identifier> {EatTokenOfType<Identifier>()} </identifier>";
         
+        if (_tokenizer.CurrentToken.Value is "[")
+            result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
+                      $"{CompileExpression()}" +
+                      $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
+        
+        result += $"<symbol> {Eat("=")} </symbol>{Environment.NewLine}" +
+                  $"{CompileExpression()}" +
+                  $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}";
+
+        return result + $"</letStatement>{Environment.NewLine}";
     }
     
-    private void CompileWhile()
+    private string CompileWhile()
     {
-        
+        return $"<whileStatement>{Environment.NewLine}" +
+               $"<keyword> {Eat("while")} </keyword>{Environment.NewLine}" +
+               $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
+               $"{CompileExpression()}" +
+               $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
+               $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
+               $"{CompileStatements()}" +
+               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
+               $"</whileStatement>{Environment.NewLine}";
     }
 
     private string CompileReturn()
@@ -207,7 +231,7 @@ public class CompilationEngine
     private bool IsTerm(Token token)
     {
         // integerConstant | stringConstant | varName | varName '[' expression ']' | subroutineCall 
-        if (token is IntConstToken or StringConstToken or IdentifierToken)
+        if (token is IntConst or StringConst or Identifier)
             return true;
         
         // keywordConstant
@@ -225,9 +249,24 @@ public class CompilationEngine
         return false;
     }
 
-    private void CompileIf()
+    private string CompileIf()
     {
+        var result = $"<ifStatement>{Environment.NewLine}" +
+                     $"<keyword> {Eat("if")} </keyword>" +
+                     $"<symbol> {Eat("(")} </symbol>" +
+                     $"{CompileExpression()}" +
+                     $"<symbol> {Eat(")")} </symbol>" +
+                     $"<symbol> {Eat("{")} </symbol>" +
+                     $"{CompileStatements()}" +
+                     $"<symbol> {Eat("}")} </symbol>";
         
+        if(_tokenizer.CurrentToken.Value is "else")
+            result += $"<keyword> {Eat("else")} </keyword>" +
+                      $"<symbol> {Eat("{")} </symbol>" +
+                      $"{CompileStatements()}" +
+                      $"<symbol> {Eat("}")} </symbol>";
+
+        return result + $"</ifStatement>{Environment.NewLine}";
     }
     
     private string CompileExpression()
@@ -247,15 +286,15 @@ public class CompilationEngine
         var result = $"<term>{Environment.NewLine}";
         var token = _tokenizer.CurrentToken;
         // integerConstant | stringConstant | varName | varName '[' expression ']' | subroutineCall 
-        if (token is IntConstToken)
-            result += $"<integerConstant> {EatTokenOfType<IntConstToken>()} </integerConstant>{Environment.NewLine}";
-        else if (token is StringConstToken)
-            result += $"<stringConstant> {EatTokenOfType<StringConstToken>()} </stringConstant>{Environment.NewLine}";
+        if (token is IntConst)
+            result += $"<integerConstant> {EatTokenOfType<IntConst>()} </integerConstant>{Environment.NewLine}";
+        else if (token is StringConst)
+            result += $"<stringConstant> {EatTokenOfType<StringConst>()} </stringConstant>{Environment.NewLine}";
         else if (token.Value is "true" or "false" or "null" or "this")
             result += $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
-        else if (token is IdentifierToken)
+        else if (token is Identifier)
         {
-            result += $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>{Environment.NewLine}";
+            result += $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
 
             if (_tokenizer.CurrentToken.Value is "[")
                 result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
@@ -284,7 +323,7 @@ public class CompilationEngine
                    $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
         if (_tokenizer.CurrentToken.Value is ".")
             return $"<symbol> {Eat(".")} </symbol>{Environment.NewLine}" +
-                   $"<identifier> {EatTokenOfType<IdentifierToken>()} </identifier>{Environment.NewLine}" +
+                   $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
                    $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
                    $"{CompileExpressionList()}" +
                    $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
@@ -331,8 +370,8 @@ public class CompilationEngine
     }
     
     private string EatTypeDeclaration() => 
-        _tokenizer.CurrentToken is IdentifierToken ? EatTokenOfType<IdentifierToken>() : EatAny("int", "char", "boolean");
+        _tokenizer.CurrentToken is Identifier ? EatTokenOfType<Identifier>() : EatAny("int", "char", "boolean");
     
     private string EatReturnTypeDeclaration() => 
-        _tokenizer.CurrentToken is IdentifierToken ? EatTokenOfType<IdentifierToken>() : EatAny("int", "char", "boolean", "void");
+        _tokenizer.CurrentToken is Identifier ? EatTokenOfType<Identifier>() : EatAny("int", "char", "boolean", "void");
 }

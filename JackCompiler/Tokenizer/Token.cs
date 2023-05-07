@@ -14,45 +14,45 @@ public abstract class Token
     public abstract string ToXml();
 }
 
-public class KeywordToken : Token
+public class Keyword : Token
 {
-    public KeywordToken(string value) : base(value) => 
+    public Keyword(string value) : base(value) => 
         Type = TokenType.Keyword;
 
     public override string ToXml() => 
         $"<keyword> {Value} </keyword>";
 }
 
-public class SymbolToken : Token
+public class Symbol : Token
 {
-    public SymbolToken(string value) : base(value) => 
+    public Symbol(string value) : base(value) => 
         Type = TokenType.Symbol;
 
     public override string ToXml() => 
         $"<symbol> {Value} </symbol>";
 }
 
-public class IdentifierToken : Token
+public class Identifier : Token
 {
-    public IdentifierToken(string value) : base(value) => 
+    public Identifier(string value) : base(value) => 
         Type = TokenType.Identifier;
 
     public override string ToXml() => 
         $"<identifier> {Value} </identifier>";
 }
 
-public class IntConstToken : Token
+public class IntConst : Token
 {
-    public IntConstToken(string value) : base(value) => 
+    public IntConst(string value) : base(value) => 
         Type = TokenType.IntConst;
 
     public override string ToXml() => 
         $"<integerConstant> {Value} </integerConstant>";
 }
 
-public class StringConstToken : Token
+public class StringConst : Token
 {
-    public StringConstToken(string value) : base(value) => 
+    public StringConst(string value) : base(value) => 
         Type = TokenType.StringConst;
 
     public override string ToXml() => 

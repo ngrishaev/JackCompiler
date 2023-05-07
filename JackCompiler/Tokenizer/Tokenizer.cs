@@ -33,11 +33,11 @@ public class Tokenizer
         
         _mainTokensSpecifications = new ()
         {
-            {String, (value) => new StringConstToken(value)},
-            {Number, (value) => new IntConstToken(value)},
-            {Keyword, (value) => new KeywordToken(value)},
-            {Symbol, (value) => new SymbolToken(value)},
-            {Identifier, (value) => new IdentifierToken(value)},
+            {String, (value) => new StringConst(value)},
+            {Number, (value) => new IntConst(value)},
+            {Keyword, (value) => new Keyword(value)},
+            {Symbol, (value) => new Symbol(value)},
+            {Identifier, (value) => new Identifier(value)},
         };
 
         SkipUnimportantTokens();
