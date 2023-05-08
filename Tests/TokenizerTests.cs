@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 
 namespace Tests;
@@ -189,6 +190,18 @@ public class Tokenizer
         var token1 = tokenizer.Advance();
 
         Assert.AreEqual("IntConst:42", token1.ToString());
+    }
+    
+    [Test]
+    public void AllComments()
+    {
+        var tokenizer = new JackCompiler.Tokenizer($"//{Environment.NewLine}" +
+                                                   $"/** Computes */{Environment.NewLine}" +
+                                                   $"class");
+
+        var token1 = tokenizer.Advance();
+
+        Assert.AreEqual("Keyword:class", token1.ToString());
     }
     
     [Test]

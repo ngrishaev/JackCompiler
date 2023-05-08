@@ -171,7 +171,7 @@ public class Tokenizer
         
         endToken += 2;
         
-        while (endToken < _src.Length - 1 && _src[endToken] != '*' && _src[endToken + 1] != '/')
+        while (endToken < _src.Length - 1 && !(_src[endToken] == '*' && _src[endToken + 1] == '/'))
             endToken++;
 
         return endToken + 2;
