@@ -26,7 +26,8 @@ public class Tokenizer
 
         _unimportantTokensSpecification = new List<Func<int, int>>()
         {
-            Comment,
+            SingleComment,
+            MultilineComment,
             WhiteSpaces,
             NewLines,
         };
@@ -147,7 +148,7 @@ public class Tokenizer
     /// </summary>
     /// <param name="start">Token start calculation index</param>
     /// <returns>Token end index from start (exclusive)</returns>
-    private int Comment(int start)
+    private int SingleComment(int start)
     {
         var endToken = start;
         if (_src.Length - endToken < 2)
@@ -157,6 +158,23 @@ public class Tokenizer
         while (endToken < _src.Length && _src[endToken] != '\n')
             endToken++;
         return endToken;
+    }
+    
+    private int MultilineComment(int start)
+    {
+        var endToken = start;
+        if (_src.Length - endToken < 2)
+            return endToken;
+        
+        if (_src[endToken] != '/' || _src[endToken + 1] != '*')
+            return endToken;
+        
+        endToken += 2;
+        
+        while (endToken < _src.Length - 1 && _src[endToken] != '*' && _src[endToken + 1] != '/')
+            endToken++;
+
+        return endToken + 2;
     }
 
     /// <summary>

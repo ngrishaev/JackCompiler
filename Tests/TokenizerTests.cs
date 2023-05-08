@@ -182,6 +182,16 @@ public class Tokenizer
     }
     
     [Test]
+    public void MultilineComment()
+    {
+        var tokenizer = new JackCompiler.Tokenizer(@"/*let*/ 42");
+
+        var token1 = tokenizer.Advance();
+
+        Assert.AreEqual("IntConst:42", token1.ToString());
+    }
+    
+    [Test]
     public void NumberKeywordStringTokens()
     {
         var tokenizer = new JackCompiler.Tokenizer(@"42 let ""let""");
