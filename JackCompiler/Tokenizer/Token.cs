@@ -2,7 +2,7 @@
 
 public abstract class Token
 {
-    public readonly string Value;
+    public virtual string Value { get; }
     public TokenType Type { get; init; }
 
     protected Token(string value) => 
@@ -52,6 +52,9 @@ public class IntConst : Token
 
 public class StringConst : Token
 {
+    public override string Value => 
+        base.Value[1..^1];
+
     public StringConst(string value) : base(value) => 
         Type = TokenType.StringConst;
 
