@@ -1,10 +1,10 @@
 ﻿namespace JackCompiler;
 
-public class CompilationEngine
+public class XmlCompilationEngine
 {
     private readonly Tokenizer _tokenizer;
 
-    public CompilationEngine(string src)
+    public XmlCompilationEngine(string src)
     {
         _tokenizer = new Tokenizer(src);
 

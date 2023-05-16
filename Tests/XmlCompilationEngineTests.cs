@@ -4,12 +4,12 @@ using NUnit.Framework;
 
 namespace Tests;
 
-public class CompilationEngineTests
+public class XmlCompilationEngineTests
 {
     [Test]
     public void TestEmptyClass()
     {
-        var engine = new CompilationEngine("class Main {}");
+        var engine = new XmlCompilationEngine("class Main {}");
         var result = engine.CompileClass();
 
         Assert.AreEqual($"<class>{Environment.NewLine}" +
@@ -23,7 +23,7 @@ public class CompilationEngineTests
     [Test]
     public void TestClassVariableStaticField()
     {
-        var engine = new CompilationEngine(@"static int x;");
+        var engine = new XmlCompilationEngine(@"static int x;");
 
         var result = engine.CompileClassVarDec();
 
@@ -38,7 +38,7 @@ public class CompilationEngineTests
     [Test]
     public void TestClassVariableLocalFieldMultiple()
     {
-        var engine = new CompilationEngine("field int x, y;");
+        var engine = new XmlCompilationEngine("field int x, y;");
 
         var result = engine.CompileClassVarDec();
 
@@ -55,7 +55,7 @@ public class CompilationEngineTests
     [Test]
     public void ReturnStatement()
     {
-        var engine = new CompilationEngine("method int run(int x, int y, Point p) {" +
+        var engine = new XmlCompilationEngine("method int run(int x, int y, Point p) {" +
                                            "var int x, y;" +
                                            "var Point p;" +
                                            "return 15;" +
@@ -114,7 +114,7 @@ public class CompilationEngineTests
     [Test]
     public void LetStatement()
     {
-        var engine = new CompilationEngine("method void run() {" +
+        var engine = new XmlCompilationEngine("method void run() {" +
                                            "var int x;" +
                                            "let x = 15;" +
                                            "return;" +
@@ -164,7 +164,7 @@ public class CompilationEngineTests
     [Test]
     public void DoStatement()
     {
-        var engine = new CompilationEngine("method void run() {" +
+        var engine = new XmlCompilationEngine("method void run() {" +
                                            "do Output.println();" +
                                            "}");
 
@@ -202,7 +202,7 @@ public class CompilationEngineTests
     [Test]
     public void IfStatement()
     {
-        var engine = new CompilationEngine("method void run() {" +
+        var engine = new XmlCompilationEngine("method void run() {" +
                                            "if(true) { return; }" +
                                            "}");
 
@@ -247,7 +247,7 @@ public class CompilationEngineTests
     [Test]
     public void IfElseStatement()
     {
-        var engine = new CompilationEngine("method void run() {" +
+        var engine = new XmlCompilationEngine("method void run() {" +
                                            "if(true) { return; } else { return; }" +
                                            "}");
 
@@ -301,7 +301,7 @@ public class CompilationEngineTests
     [Test]
     public void MultipleSubroutines()
     {
-        var engine = new CompilationEngine($"class Main {{{Environment.NewLine}" +
+        var engine = new XmlCompilationEngine($"class Main {{{Environment.NewLine}" +
                                            $"function void main () {{{Environment.NewLine}" +
                                            $"return ;{Environment.NewLine}" +
                                            $"}}{Environment.NewLine}" +
@@ -362,7 +362,7 @@ public class CompilationEngineTests
     [Test]
     public void TestClassWithFields()
     {
-        var engine = new CompilationEngine($"class Main {{{Environment.NewLine}" +
+        var engine = new XmlCompilationEngine($"class Main {{{Environment.NewLine}" +
                                            $"static int x, y;{Environment.NewLine}" +
                                            $"field Point p;}}{Environment.NewLine}");
 
@@ -393,7 +393,7 @@ public class CompilationEngineTests
     [Test]
     public void TestClassWithSubroutines()
     {
-        var engine = new CompilationEngine($"class Main {{{Environment.NewLine}" +
+        var engine = new XmlCompilationEngine($"class Main {{{Environment.NewLine}" +
                                            $"function void main () {{{Environment.NewLine}" +
                                            $"return ;{Environment.NewLine}" +
                                            $"}}{Environment.NewLine}" +
