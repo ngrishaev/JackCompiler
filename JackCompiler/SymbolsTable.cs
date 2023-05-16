@@ -6,6 +6,9 @@ public class SymbolsTable
     private Dictionary<string, SymbolInfo> _classSymbols;
     private Dictionary<string, SymbolInfo> _subroutineSymbols;
     private string _subroutineName;
+    
+    public string ClassName => _className;
+    public string SubroutineName => _subroutineName ?? throw new InvalidOperationException("SubroutineName is null");
 
     public SymbolsTable(string className)
     {
@@ -18,17 +21,17 @@ public class SymbolsTable
         _subroutineSymbols = new Dictionary<string, SymbolInfo>();
     }
     
-    public void Define(string name, string type, string kind)
+    public void Define(string name, string type, SymbolInfo.SymbolLocation location)
     {
-        var index = GetCount(kind);
+        var index = GetCount(location);
         var symbolInfo = new SymbolInfo()
         {
             Type = type,
-            Kind = kind,
+            Location = location,
             Index = index,
         };
 
-        if (kind is "static" or "field")
+        if (location is SymbolInfo.SymbolLocation.Static or SymbolInfo.SymbolLocation.Field)    
             _classSymbols[name] = symbolInfo;
         else
             _subroutineSymbols[name] = symbolInfo;
@@ -45,15 +48,23 @@ public class SymbolsTable
         return false;
     }
 
-    private int GetCount(string kind) =>
-        kind is "static" or "field"
-            ? _classSymbols.Count(symbol => symbol.Value.Kind == kind)
-            : _subroutineSymbols.Count(symbol => symbol.Value.Kind == kind);
+    private int GetCount(SymbolInfo.SymbolLocation kind) =>
+        kind is SymbolInfo.SymbolLocation.Static or SymbolInfo.SymbolLocation.Field
+            ? _classSymbols.Count(symbol => symbol.Value.Location == kind)
+            : _subroutineSymbols.Count(symbol => symbol.Value.Location == kind);
 }
 
 public class SymbolInfo
 {
     public string Type;
-    public string Kind;
+    public SymbolLocation Location;
     public int Index;
+
+    public enum SymbolLocation
+    {
+        Static,
+        Field,
+        Argument,
+        Local,
+    }
 }
