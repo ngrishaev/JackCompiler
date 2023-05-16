@@ -144,7 +144,7 @@ public class Tokenizer
         var token3 = tokenizer.Advance();
 
         Assert.AreEqual("IntConst:42", token1.ToString());
-        Assert.AreEqual("StringConst:\"string\"", token2.ToString());
+        Assert.AreEqual("StringConst:string", token2.ToString());
         Assert.AreEqual("IntConst:43", token3.ToString());
     }
     [Test]
@@ -158,7 +158,7 @@ public class Tokenizer
         var token3 = tokenizer.Advance();
 
         Assert.AreEqual("IntConst:42", token1.ToString());
-        Assert.AreEqual("StringConst:\"string42\"", token2.ToString());
+        Assert.AreEqual("StringConst:string42", token2.ToString());
         Assert.AreEqual("IntConst:43", token3.ToString());
     }
     
@@ -169,7 +169,7 @@ public class Tokenizer
 
         var token1 = tokenizer.Advance();
 
-        Assert.AreEqual("StringConst:\"string\"", token1.ToString());
+        Assert.AreEqual("StringConst:string", token1.ToString());
     }
     
     [Test]
@@ -215,7 +215,7 @@ public class Tokenizer
 
         Assert.AreEqual("IntConst:42", token1.ToString());
         Assert.AreEqual("Keyword:let", token2.ToString());
-        Assert.AreEqual("StringConst:\"let\"", token3.ToString());
+        Assert.AreEqual("StringConst:let", token3.ToString());
     }
     
     [Test]
@@ -263,7 +263,7 @@ public class Tokenizer
         Assert.AreEqual("Keyword:let", token11.ToString());
         Assert.AreEqual("Identifier:someString", token12.ToString());
         Assert.AreEqual("Symbol:=", token13.ToString());
-        Assert.AreEqual("StringConst:\"Hello World\"", token14.ToString());
+        Assert.AreEqual("StringConst:Hello World", token14.ToString());
         Assert.AreEqual("Symbol:;", token15.ToString());
         Assert.AreEqual("Keyword:return", token16.ToString());
         Assert.AreEqual("IntConst:15", token17.ToString());
