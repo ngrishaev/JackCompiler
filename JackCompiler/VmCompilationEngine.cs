@@ -3,10 +3,13 @@
 public class VmCompilationEngine
 {
     private readonly Tokenizer _tokenizer;
+    private readonly VmWriter _vmWriter;
+    private SymbolsTable _symbolsTable;
 
     public VmCompilationEngine(string src)
     {
         _tokenizer = new Tokenizer(src);
+        _vmWriter = new VmWriter();
 
         if (_tokenizer.HasMoreTokens() == false)
             throw new Exception("No tokens");
@@ -15,139 +18,143 @@ public class VmCompilationEngine
 
     public string CompileClass()
     {
-        return $"<class>{Environment.NewLine}" +
-               $"<keyword> {Eat("class")} </keyword>{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-               $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-               $"{CompileClassVarDecZeroOrMore()}{CompileSubroutineZeroOrMore()}" +
-               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
-               $"</class>";
-
-        string CompileSubroutineZeroOrMore()
-        {
-            var result = "";
+        Eat("class");
+        var className = EatTokenOfType<Identifier>();
+        _symbolsTable = new SymbolsTable(className);
         
-            while (_tokenizer.CurrentToken.Value is "constructor" or "function" or "method") 
-                result += CompileSubroutine();
-            
-            result = result.TrimEnd(Environment.NewLine.ToCharArray());
-            return result == "" ? result : result + Environment.NewLine;
-        }
+        Eat("{");
+        while (_tokenizer.CurrentToken.Value is "static" or "field") 
+            CompileClassVarDec();
 
-        string CompileClassVarDecZeroOrMore()
-        {
-            var result = "";
+        while (_tokenizer.CurrentToken.Value is "constructor" or "function" or "method") 
+            CompileSubroutine();
         
-            while (_tokenizer.CurrentToken.Value is "static" or "field") 
-                result += CompileClassVarDec();
+        Eat("}");
+        
+        _symbolsTable = new SymbolsTable(className);
 
-            return result;
-        }
+        return _vmWriter.ToString();
     }
 
-    public string CompileClassVarDec()
+    public void CompileClassVarDec()
     {
-        return $"<classVarDec>{Environment.NewLine}" +
-               $"<keyword> {EatAny("static", "field")} </keyword>{Environment.NewLine}" +
-               $"{CompileType()}{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-               $"{CompileZeroOrMoreVarNameDeclarations()}" +
-               $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
-               $"</classVarDec>{Environment.NewLine}";
-    }
-    
-    private string CompileZeroOrMoreVarNameDeclarations()
-    {
-        var result = "";
+        if(SymbolInfo.IsLocation(_tokenizer.CurrentToken.Value) == false)
+            throw new Exception("Expected static or field");
+        
+        var varLocation = SymbolInfo.GetLocation(_tokenizer.CurrentToken.Value);
+        if (varLocation is SymbolInfo.SymbolLocation.Argument or SymbolInfo.SymbolLocation.Local)
+            throw new Exception("Expected static or field");
+        
+        EatAny("static", "field");
+        var type = EatTypeDeclaration();
+        var varName = EatTokenOfType<Identifier>();
+        
+        _symbolsTable.Define(varName, type, varLocation);
         
         while (_tokenizer.CurrentToken.Value is ",")
-            result += $"<symbol> {Eat(",")} </symbol>"
-                      + Environment.NewLine
-                      + $"<identifier> {EatTokenOfType<Identifier>()} </identifier>"
-                      + Environment.NewLine;
-
-        result = result.TrimEnd(Environment.NewLine.ToCharArray());
-
-        return result == "" ? result : result + Environment.NewLine;
-    }
-
-    private string CompileType()
-    {
-        var tag = _tokenizer.CurrentToken is Keyword ? "keyword" : "identifier";
-        return $@"<{tag}> {EatTypeDeclaration()} </{tag}>";
-    }
-
-    public string CompileSubroutine()
-    {
-        return $"<subroutineDec>{Environment.NewLine}" +
-               $"<keyword> {EatAny("constructor", "function", "method")} </keyword>{Environment.NewLine}" +
-               $"{CompileTypeAndVoid()}{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-               $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-               $"{CompileParameterList()}" +
-               $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
-               $"{CompileSubroutineBody()}" +
-               $"</subroutineDec>{Environment.NewLine}";
-    }
-
-    private string CompileSubroutineBody()
-    {
-        return $"<subroutineBody>{Environment.NewLine}" +
-               $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-               $"{CompileVarDecOneOrMore()}" +
-               $"{CompileStatements()}" +
-               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
-               $"</subroutineBody>{Environment.NewLine}";
-        
-        string CompileVarDecOneOrMore()
         {
-            var result = "";
-
-            while (_tokenizer.CurrentToken.Value is "var")
-                result += $"<varDec>{Environment.NewLine}" +
-                          $"<keyword> {Eat("var")} </keyword>{Environment.NewLine}" +
-                          $"{CompileType()}{Environment.NewLine}" +
-                          $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-                          $"{CompileZeroOrMoreVarNameDeclarations()}" +
-                          $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
-                          $"</varDec>{Environment.NewLine}"; 
-
-            result = result.TrimEnd(Environment.NewLine.ToCharArray());
-            return result == "" ? result : result + Environment.NewLine;
+            Eat(",");
+            varName = EatTokenOfType<Identifier>();
+            _symbolsTable.Define(varName, type, varLocation);
         }
+
+        Eat(";");
     }
 
-    private string CompileTypeAndVoid()
+    public void CompileSubroutine()
     {
-        var tag = _tokenizer.CurrentToken is Keyword ? "keyword" : "identifier";
-        return $@"<{tag}> {EatReturnTypeDeclaration()} </{tag}>";
+        // return $"<subroutineDec>{Environment.NewLine}" +
+        //        $"<keyword> {EatAny("constructor", "function", "method")} </keyword>{Environment.NewLine}" +
+        //        $"{CompileTypeAndVoid()}{Environment.NewLine}" +
+        //        $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
+        //        $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
+        //        $"{CompileParameterList()}" +
+        //        $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
+        //        $"{CompileSubroutineBody()}" +
+        //        $"</subroutineDec>{Environment.NewLine}";
+        
+        if (_tokenizer.CurrentToken.Value is "constructor")
+            CompileConstructor();
+        else if (_tokenizer.CurrentToken.Value is "function")
+            CompileFunction();
+        // else if (_tokenizer.CurrentToken.Value is "method")
+        //     CompileMethod();
+        else 
+            throw new Exception("Expected constructor, function, or method");
     }
 
-    private string CompileParameterList()
+    private void CompileFunction()
     {
-        var result = $"<parameterList>{Environment.NewLine}";
+        Eat("function");
+        EatReturnTypeDeclaration();
+        var subroutineName = EatTokenOfType<Identifier>();
+        _symbolsTable.StartSubroutine(subroutineName);
+        Eat("(");
+        CompileParameterList();
+        Eat(")");
+        
+        _vmWriter.WriteFunction(
+            _symbolsTable.ClassName + "." + subroutineName,
+            _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Local)
+            );
+        CompileSubroutineBody();
+        
+        // If return type is void we still should return 0; 
+    }
+
+    private void CompileConstructor()
+    {
+        throw new NotImplementedException();
+        EatAny("constructor", "function", "method");
+        EatReturnTypeDeclaration();
+        EatTokenOfType<Identifier>();
+        Eat("(");
+        CompileParameterList();
+        Eat(")");
+        CompileSubroutineBody();
+    }
+
+    private void CompileSubroutineBody()
+    {
+        Eat("{");
+        
+        while (_tokenizer.CurrentToken.Value is "var")
+        {
+            Eat("var");
+            var varType = EatTypeDeclaration();
+            var varName = EatTokenOfType<Identifier>();
+
+            _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            while (_tokenizer.CurrentToken.Value is ",")
+            {
+                Eat(",");
+                varName = EatTokenOfType<Identifier>();
+                _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            }
+            
+            Eat(";");
+        }
+
+        CompileStatements();
+        Eat("}");
+    }
+
+    private void CompileParameterList()
+    {
         if (IsType(_tokenizer.CurrentToken))
         {
-            result += $"{CompileType()}{Environment.NewLine}" +
-                      $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-                      $"{CompileParametersVariablesNames()}";
-        }
-                     
-        return result + $"</parameterList>{Environment.NewLine}";
-        
-        string CompileParametersVariablesNames()
-        {
-            var variablesCompilation = "";
+            var varType = EatTypeDeclaration();
+            var varName = EatTokenOfType<Identifier>();
+            _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Argument);
+            
             while (_tokenizer.CurrentToken.Value is ",")
-                variablesCompilation += $"<symbol> {Eat(",")} </symbol>{Environment.NewLine}" +
-                                        $"{CompileType()}{Environment.NewLine}" +
-                                        $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
-            
-            
-            variablesCompilation = variablesCompilation.TrimEnd(Environment.NewLine.ToCharArray());
-            return variablesCompilation == "" ? variablesCompilation : variablesCompilation + Environment.NewLine;
+            {
+                Eat(",");
+                varType = EatTypeDeclaration();
+                varName = EatTokenOfType<Identifier>();
+                _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Argument);
+            }
         }
-
     }
 
     private bool IsType(Token token) =>
@@ -156,39 +163,48 @@ public class VmCompilationEngine
 
     private string CompileStatements()
     {
-        var result = $"<statements>{Environment.NewLine}";
         while (_tokenizer.CurrentToken.Value is "let" or "if" or "while" or "do" or "return")
         {
             switch (_tokenizer.CurrentToken.Value)
             {
                 case "let":
-                    result += CompileLet();
+                    CompileLet();
                     break;
                 case "if":
-                    result += CompileIf();
+                    CompileIf();
                     break;
                 case "while":
-                    result += CompileWhile();
+                    CompileWhile();
                     break;
                 case "do":
-                    result += CompileDo();
+                    CompileDo();
                     break;
                 case "return":
-                    result += CompileReturn();
+                    CompileReturn();
                     break;
             }
         }
-        return result + $"</statements>{Environment.NewLine}";
+
+        return "";
     }
     
-    private string CompileDo()
+    private void CompileDo()
     {
-        return $"<doStatement>{Environment.NewLine}" +
-               $"<keyword> {Eat("do")} </keyword>{Environment.NewLine}" +
-               $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-               $"{CompileSubroutineCallBody()}" +
-               $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
-               $"</doStatement>{Environment.NewLine}";
+        Eat("do");
+        var funcName = EatTokenOfType<Identifier>();
+        if (_tokenizer.CurrentToken.Value is ".")
+        {
+            funcName += Eat(".");
+            funcName += EatTokenOfType<Identifier>();
+        }
+
+        Eat("(");
+        var count = CompileExpressionList();
+        Eat(")");
+        Eat(";");
+        
+        _vmWriter.WriteCall(funcName, count);
+        _vmWriter.WritePop(VmMemorySegment.Temp, 0);
     }
     
     private string CompileLet()
@@ -222,18 +238,17 @@ public class VmCompilationEngine
                $"</whileStatement>{Environment.NewLine}";
     }
 
-    private string CompileReturn()
+    private void CompileReturn()
     {
-        var result = $"<returnStatement>{Environment.NewLine}" +
-                     $"<keyword> {Eat("return")} </keyword>{Environment.NewLine}" +
-                     $"{CompileReturnExpression()}";
-
-        return result +
-               $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}" +
-               $"</returnStatement>{Environment.NewLine}";
-
-        string CompileReturnExpression() => 
-            IsTerm(_tokenizer.CurrentToken) ? CompileExpression() : "";
+        Eat("return");
+        
+        if (IsTerm(_tokenizer.CurrentToken))
+             CompileExpressionNum();
+        else
+            _vmWriter.WritePush(VmMemorySegment.Constant, 0);
+        
+        _vmWriter.WriteReturn();
+        Eat(";");
     }
 
     private bool IsTerm(Token token)
@@ -281,49 +296,168 @@ public class VmCompilationEngine
     {
         if (!IsTerm(_tokenizer.CurrentToken))
             return "";
-        
-        var result = $"<expression>{Environment.NewLine}" +
-                     $"{CompileTerm()}";
+
+        CompileTerm();
         
         if(_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
-            result += $"<symbol> {EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=")} </symbol>{Environment.NewLine}" +
-                      $"{CompileTerm()}";
-        
-        return result + $"</expression>{Environment.NewLine}";
+        {
+            EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
+            CompileTerm();
+        }
+
+        return "";
+    }
+    
+    private int CompileExpressionNum()
+    {
+        if (!IsTerm(_tokenizer.CurrentToken))
+            return 0;
+
+        var counter = CompileTermNum();
+
+        if (_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
+        {
+            var op = EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
+            counter += CompileTermNum();
+            WriteOp(op);
+        }
+
+        return counter;
+
+        void WriteOp(string op)
+        {
+            switch (op)
+            {
+                case "+":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Add);
+                    break;
+                case "-":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Sub);
+                    break;
+                case "*":
+                    _vmWriter.WriteCall("Math.multiply", 2);
+                    break;
+                case "/":
+                    _vmWriter.WriteCall("Math.divide", 2);
+                    break;
+                case "&":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.And);
+                    break;
+                case "|":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Or);
+                    break;
+                case "<":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Lt);
+                    break;
+                case ">":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Gt);
+                    break;
+                case "=":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Eq);
+                    break;
+                default:
+                    throw new Exception("Unknown operand: " + op);
+            }
+        }
     }
 
     private string CompileTerm()
     {
-        var result = $"<term>{Environment.NewLine}";
+        var result = "";
         var token = _tokenizer.CurrentToken;
-        // integerConstant | stringConstant | varName | varName '[' expression ']' | subroutineCall 
         if (token is IntConst)
-            result += $"<integerConstant> {EatTokenOfType<IntConst>()} </integerConstant>{Environment.NewLine}";
+        {
+            var intConst = int.Parse(EatTokenOfType<IntConst>());
+            _vmWriter.WritePush(VmMemorySegment.Constant, intConst);
+        }
         else if (token is StringConst)
+        {
             result += $"<stringConstant> {EatTokenOfType<StringConst>()} </stringConstant>{Environment.NewLine}";
+        }
         else if (token.Value is "true" or "false" or "null" or "this")
-            result += $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
+        {
+            result +=
+                $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
+        }
         else if (token is Identifier)
         {
             result += $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
 
             if (_tokenizer.CurrentToken.Value is "[")
+            {
                 result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
                           $"{CompileExpression()}" +
                           $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
+            }
             else if (_tokenizer.CurrentToken.Value is "(" or ".")
+            {
                 result += $"{CompileSubroutineCallBody()}";
-            
+            }
         }
         else if (token.Value is "(")
+        {
             result += $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
                       $"{CompileExpression()}" +
                       $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
+        }
         else if (token.Value is "-" or "~")
+        {
             result += $"<symbol> {EatAny("-", "~")} </symbol>{Environment.NewLine}" +
                       $"{CompileTerm()}";
-        
-        return result + $"</term>{Environment.NewLine}";
+        }
+
+        return "";
+    }
+
+    
+    private int CompileTermNum()
+    {
+        var result = "";
+        var counter = 0;
+        var token = _tokenizer.CurrentToken;
+        if (token is IntConst)
+        {
+            var intConst = int.Parse(EatTokenOfType<IntConst>());
+            _vmWriter.WritePush(VmMemorySegment.Constant, intConst);
+            counter++;
+        }
+        else if (token is StringConst)
+        {
+            result += $"<stringConstant> {EatTokenOfType<StringConst>()} </stringConstant>{Environment.NewLine}";
+        }
+        else if (token.Value is "true" or "false" or "null" or "this")
+        {
+            result +=
+                $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
+        }
+        else if (token is Identifier)
+        {
+            result += $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
+
+            if (_tokenizer.CurrentToken.Value is "[")
+            {
+                result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
+                          $"{CompileExpression()}" +
+                          $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
+            }
+            else if (_tokenizer.CurrentToken.Value is "(" or ".")
+            {
+                result += $"{CompileSubroutineCallBody()}";
+            }
+        }
+        else if (token.Value is "(")
+        {
+            Eat("(");
+            CompileExpressionNum();
+            Eat(")");
+        }
+        else if (token.Value is "-" or "~")
+        {
+            result += $"<symbol> {EatAny("-", "~")} </symbol>{Environment.NewLine}" +
+                      $"{CompileTerm()}";
+        }
+
+        return counter;
     }
 
     private string CompileSubroutineCallBody()
@@ -341,16 +475,17 @@ public class VmCompilationEngine
         throw new Exception($"Expected '(' or '.' but got {_tokenizer.CurrentToken.Value}");
     }
 
-    private string CompileExpressionList()
+    private int CompileExpressionList()
     {
-        var result = $"<expressionList>{Environment.NewLine}" +
-                     $"{CompileExpression()}";
+        var counter = CompileExpressionNum();
         
         while (_tokenizer.CurrentToken.Value is ",")
-            result += $"<symbol> {Eat(",")} </symbol>{Environment.NewLine}" +
-                      $"{CompileExpression()}";
-        
-        return result + $"</expressionList>{Environment.NewLine}";
+        {
+            Eat(",");
+            counter = CompileExpressionNum();
+        }
+
+        return counter;
     }
 
     private string EatTokenOfType<TToken>()

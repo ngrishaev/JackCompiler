@@ -48,7 +48,7 @@ public class SymbolsTable
         return false;
     }
 
-    private int GetCount(SymbolInfo.SymbolLocation kind) =>
+    public int GetCount(SymbolInfo.SymbolLocation kind) =>
         kind is SymbolInfo.SymbolLocation.Static or SymbolInfo.SymbolLocation.Field
             ? _classSymbols.Count(symbol => symbol.Value.Location == kind)
             : _subroutineSymbols.Count(symbol => symbol.Value.Location == kind);
@@ -66,5 +66,29 @@ public class SymbolInfo
         Field,
         Argument,
         Local,
+    }
+    
+    public static SymbolLocation GetLocation(string location)
+    {
+        return location.ToLower() switch
+        {
+            "static" => SymbolLocation.Static,
+            "field" => SymbolLocation.Field,
+            "argument" => SymbolLocation.Argument,
+            "local" => SymbolLocation.Local,
+            _ => throw new ArgumentOutOfRangeException(nameof(location), location, null)
+        };
+    }
+    
+    public static bool IsLocation(string location)
+    {
+        return location.ToLower() switch
+        {
+            "static" => true,
+            "field" => true,
+            "argument" => true,
+            "local" => true,
+            _ => false
+        };
     }
 }
