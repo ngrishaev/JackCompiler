@@ -24,28 +24,28 @@ public class VmWriter
                 _sb.AppendLine("add");
                 break;
             case ArithmeticCommand.Sub:
-                throw new NotImplementedException();
+                _sb.AppendLine("sub");
                 break;
             case ArithmeticCommand.Neg:
-                throw new NotImplementedException();
+                _sb.AppendLine("neg");
                 break;
             case ArithmeticCommand.Eq:
-                throw new NotImplementedException();
+                _sb.AppendLine("eq");
                 break;
             case ArithmeticCommand.Gt:
-                throw new NotImplementedException();
+                _sb.AppendLine("gt");
                 break;
             case ArithmeticCommand.Lt:
-                throw new NotImplementedException();
+                _sb.AppendLine("lt");
                 break;
             case ArithmeticCommand.And:
-                throw new NotImplementedException();
+                _sb.AppendLine("and");
                 break;
             case ArithmeticCommand.Or:
-                throw new NotImplementedException();
+                _sb.AppendLine("or");
                 break;
             case ArithmeticCommand.Not:
-                throw new NotImplementedException();
+                _sb.AppendLine("not");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(command), command, null);
