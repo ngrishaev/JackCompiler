@@ -42,7 +42,7 @@ public class SymbolsTable
         if (_subroutineSymbols.TryGetValue(name, out symbolInfo))
             return true;
         
-        if (_classSymbols.TryGetValue(name, out symbolInfo))
+        if (_classSymbols?.TryGetValue(name, out symbolInfo) ?? false)
             return true;
 
         return false;

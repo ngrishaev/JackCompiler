@@ -228,6 +228,51 @@ public class VmCompilationEngineTests
                         $"push constant 0{Environment.NewLine}" +
                         $"return{Environment.NewLine}", result);
     }
+    
+    [Test]    
+    public void TestOtherObjectMethodCall()
+    {
+        var engine = new VmCompilationEngine("class Main {" +
+                                             "    function void main() {" +
+                                             "        var Test test;" +
+                                             "        let test = Test.new();" +
+                                             "        do test.bar();" +
+                                             "        return;" +
+                                             "    }" +
+                                             "}");
+        
+        var result = engine.CompileClass();
+        Assert.AreEqual($"function Main.main 1{Environment.NewLine}" +
+                        $"call Test.new 0{Environment.NewLine}" +
+                        $"pop local 0{Environment.NewLine}" +
+                        $"push local 0{Environment.NewLine}" +
+                        $"call Test.bar 1{Environment.NewLine}" +
+                        $"pop temp 0{Environment.NewLine}" +
+                        $"push constant 0{Environment.NewLine}" +
+                        $"return{Environment.NewLine}", result);
+    }
+    [Test]    
+    public void TestOtherObjectMethodCallAsPartOfExpression()
+    {
+        var engine = new VmCompilationEngine("class Main {" +
+                                             "    function void main() {" +
+                                             "        var Test test;" +
+                                             "        let test = Test.new();" +
+                                             "        do Output.printInt(test.bar());" +
+                                             "        return;" +
+                                             "    }" +
+                                             "}");
+        
+        var result = engine.CompileClass();
+        Assert.AreEqual($"function Main.main 1{Environment.NewLine}" +
+                        $"call Test.new 0{Environment.NewLine}" +
+                        $"pop local 0{Environment.NewLine}" +
+                        $"push local 0{Environment.NewLine}" +
+                        $"call Test.bar 1{Environment.NewLine}" +
+                        $"pop temp 0{Environment.NewLine}" +
+                        $"push constant 0{Environment.NewLine}" +
+                        $"return{Environment.NewLine}", result);
+    }
 
 
 }

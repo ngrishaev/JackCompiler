@@ -182,7 +182,14 @@ public class VmCompilationEngine
     private void CompileDo()
     {
         Eat("do");
-        var funcName = EatTokenOfType<Identifier>();
+        
+        var identifier = EatTokenOfType<Identifier>();
+        var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbolInfo);
+            
+        var funcName = symbolFound
+            ? symbolInfo.Type
+            : identifier;
+
         if (_tokenizer.CurrentToken.Value is ".")
         {
             funcName += Eat(".");
@@ -193,7 +200,12 @@ public class VmCompilationEngine
         var count = CompileExpressionList();
         Eat(")");
         Eat(";");
-        
+
+        if(symbolFound)
+        {
+            _vmWriter.WritePush(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+            count++;
+        }
         _vmWriter.WriteCall(funcName, count);
         _vmWriter.WritePop(VmMemorySegment.Temp, 0);
     }
@@ -356,7 +368,6 @@ public class VmCompilationEngine
 
     private int CompileTerm()
     {
-        var result = "";
         var counter = 0;
         var token = _tokenizer.CurrentToken;
         if (token is IntConst)
@@ -384,16 +395,17 @@ public class VmCompilationEngine
             _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
             counter++;
         }
-        else if (token.Value is "false")
+        else if (token.Value is "false" or "null")
         {
-            Eat("false");
+            EatAny("false", "null"); // false is same as null
             _vmWriter.WritePush(VmMemorySegment.Constant, 0);
             counter++;
         }
-        else if (token.Value is "null" or "this")
+        else if (token.Value is "this")
         {
-            result +=
-                $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
+            Eat("this");
+            _vmWriter.WritePush(VmMemorySegment.Pointer, 0);
+            counter++;
         }
         else if (token is Identifier)
         {
@@ -402,7 +414,6 @@ public class VmCompilationEngine
             // TODO: handle array
             if (_tokenizer.CurrentToken.Value is "[")
             {
-
                 Eat("[");
                 counter += CompileExpressionNum();
                 Eat("]");
