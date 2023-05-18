@@ -309,12 +309,12 @@ public class VmCompilationEngine
         if (!IsTerm(_tokenizer.CurrentToken))
             return 0;
 
-        var counter = CompileTermNum();
+        var counter = CompileTerm();
 
         if (_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
         {
             var op = EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
-            counter += CompileTermNum();
+            counter += CompileTerm();
             switch (op)
             {
                 case "+":
@@ -354,7 +354,7 @@ public class VmCompilationEngine
         return counter;
     }
 
-    private int CompileTermNum()
+    private int CompileTerm()
     {
         var result = "";
         var counter = 0;
@@ -367,9 +367,30 @@ public class VmCompilationEngine
         }
         else if (token is StringConst)
         {
-            result += $"<stringConstant> {EatTokenOfType<StringConst>()} </stringConstant>{Environment.NewLine}";
+            var stringConst = EatTokenOfType<StringConst>();
+            _vmWriter.WritePush(VmMemorySegment.Constant, stringConst.Length);
+            _vmWriter.WriteCall("String.new", 1);
+            foreach (var c in stringConst)
+            {
+                _vmWriter.WritePush(VmMemorySegment.Constant, c);
+                _vmWriter.WriteCall("String.appendChar", 2);
+            }
+            counter++;
         }
-        else if (token.Value is "true" or "false" or "null" or "this")
+        else if (token.Value is "true")
+        {
+            Eat("true");
+            _vmWriter.WritePush(VmMemorySegment.Constant, 0);
+            _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
+            counter++;
+        }
+        else if (token.Value is "false")
+        {
+            Eat("false");
+            _vmWriter.WritePush(VmMemorySegment.Constant, 0);
+            counter++;
+        }
+        else if (token.Value is "null" or "this")
         {
             result +=
                 $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
@@ -417,7 +438,7 @@ public class VmCompilationEngine
         else if (token.Value is "-" or "~")
         {
             var op = EatAny("-", "~");
-            counter += CompileTermNum();
+            counter += CompileTerm();
             switch (op)
             {
                 case "-":

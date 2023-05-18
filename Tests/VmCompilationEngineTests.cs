@@ -192,5 +192,42 @@ public class VmCompilationEngineTests
                         $"push constant 0{Environment.NewLine}" +
                         $"return{Environment.NewLine}", result);
     }
+    
+        [Test]
+    public void TestStringConst()
+    {
+        var engine = new VmCompilationEngine("class Main {" +
+                                             "    function void main() {" +
+                                             "        var string str;" +
+                                             "        let str = \"Hello!\";" +
+                                             "        do Output.printInt(str);" +
+                                             "        return;" +
+                                             "    }" +
+                                             "}");
+        
+        var result = engine.CompileClass();
+        Assert.AreEqual($"function Main.main 1{Environment.NewLine}" +
+                        $"push constant 6{Environment.NewLine}" +
+                        $"call String.new 1{Environment.NewLine}" +
+                        $"push constant 72{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"push constant 101{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"push constant 108{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"push constant 108{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"push constant 111{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"push constant 33{Environment.NewLine}" +
+                        $"call String.appendChar 2{Environment.NewLine}" +
+                        $"pop local 0{Environment.NewLine}" +
+                        $"push local 0{Environment.NewLine}" +
+                        $"call Output.printInt 1{Environment.NewLine}" +
+                        $"pop temp 0{Environment.NewLine}" +
+                        $"push constant 0{Environment.NewLine}" +
+                        $"return{Environment.NewLine}", result);
+    }
+
 
 }
