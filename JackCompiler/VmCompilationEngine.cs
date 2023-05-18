@@ -63,16 +63,6 @@ public class VmCompilationEngine
 
     public void CompileSubroutine()
     {
-        // return $"<subroutineDec>{Environment.NewLine}" +
-        //        $"<keyword> {EatAny("constructor", "function", "method")} </keyword>{Environment.NewLine}" +
-        //        $"{CompileTypeAndVoid()}{Environment.NewLine}" +
-        //        $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-        //        $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-        //        $"{CompileParameterList()}" +
-        //        $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
-        //        $"{CompileSubroutineBody()}" +
-        //        $"</subroutineDec>{Environment.NewLine}";
-        
         if (_tokenizer.CurrentToken.Value is "constructor")
             CompileConstructor();
         else if (_tokenizer.CurrentToken.Value is "function")
@@ -93,10 +83,6 @@ public class VmCompilationEngine
         CompileParameterList();
         Eat(")");
         
-        _vmWriter.WriteFunction(
-            _symbolsTable.ClassName + "." + subroutineName,
-            _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Local)
-            );
         CompileSubroutineBody();
         
         // If return type is void we still should return 0; 
@@ -134,6 +120,11 @@ public class VmCompilationEngine
             
             Eat(";");
         }
+        
+        _vmWriter.WriteFunction(
+            _symbolsTable.ClassName + "." + _symbolsTable.SubroutineName ?? throw new Exception("Subroutine name is unknown"),
+            _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Local)
+        );
 
         CompileStatements();
         Eat("}");
@@ -207,22 +198,28 @@ public class VmCompilationEngine
         _vmWriter.WritePop(VmMemorySegment.Temp, 0);
     }
     
-    private string CompileLet()
+    private void CompileLet()
     {
-        var result = $"<letStatement>{Environment.NewLine}" +
-                     $"<keyword> {Eat("let")} </keyword>{Environment.NewLine}" +
-                     $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
-        
-        if (_tokenizer.CurrentToken.Value is "[")
-            result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
-                      $"{CompileExpression()}" +
-                      $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
-        
-        result += $"<symbol> {Eat("=")} </symbol>{Environment.NewLine}" +
-                  $"{CompileExpression()}" +
-                  $"<symbol> {Eat(";")} </symbol>{Environment.NewLine}";
+        Eat("let");
+        var varName = EatTokenOfType<Identifier>();
 
-        return result + $"</letStatement>{Environment.NewLine}";
+        // TODO: Handle array
+        if (_tokenizer.CurrentToken.Value is "[")
+        {
+            Eat("[");
+            CompileExpressionNum();
+            Eat("]");
+        }
+
+        Eat("=");
+        CompileExpressionNum();
+        Eat(";");
+        
+        if(!_symbolsTable.TryGetSymbol(varName, out var symbolInfo))
+            throw new Exception($"Symbol {varName} not found");
+        
+        _vmWriter.WritePop(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+            
     }
     
     private string CompileWhile()
@@ -319,13 +316,6 @@ public class VmCompilationEngine
         {
             var op = EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
             counter += CompileTermNum();
-            WriteOp(op);
-        }
-
-        return counter;
-
-        void WriteOp(string op)
-        {
             switch (op)
             {
                 case "+":
@@ -356,9 +346,13 @@ public class VmCompilationEngine
                     _vmWriter.WriteArithmetic(ArithmeticCommand.Eq);
                     break;
                 default:
-                    throw new Exception("Unknown operand: " + op);
+                    throw new Exception("Unexpected operand: " + op);
             }
+
+            counter = counter - 2 + 1; // Arithmetic command takes 2 arguments and returns 1
         }
+
+        return counter;
     }
 
     private string CompileTerm()
@@ -432,29 +426,51 @@ public class VmCompilationEngine
         }
         else if (token is Identifier)
         {
-            result += $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
+            var name = EatTokenOfType<Identifier>();
 
             if (_tokenizer.CurrentToken.Value is "[")
             {
-                result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
-                          $"{CompileExpression()}" +
-                          $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
+                // TODO: handle array
+                Eat("[");
+                counter += CompileExpressionNum();
+                Eat("]");
             }
             else if (_tokenizer.CurrentToken.Value is "(" or ".")
             {
-                result += $"{CompileSubroutineCallBody()}";
+                if (_tokenizer.CurrentToken.Value is ".")
+                {
+                    name += Eat(".");
+                    name += EatTokenOfType<Identifier>();
+                }
+
+                Eat("(");
+                counter += CompileExpressionList();
+                Eat(")");
+                _vmWriter.WriteCall(name, counter);
+                counter = 0;
             }
         }
         else if (token.Value is "(")
         {
             Eat("(");
-            CompileExpressionNum();
+            counter += CompileExpressionNum();
             Eat(")");
         }
         else if (token.Value is "-" or "~")
         {
-            result += $"<symbol> {EatAny("-", "~")} </symbol>{Environment.NewLine}" +
-                      $"{CompileTerm()}";
+            var op = EatAny("-", "~");
+            counter += CompileTermNum();
+            switch (op)
+            {
+                case "-":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Neg);
+                    break;
+                case "~":
+                    _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
+                    break;
+                default:
+                    throw new Exception("Unknown operand: " + op);
+            }
         }
 
         return counter;

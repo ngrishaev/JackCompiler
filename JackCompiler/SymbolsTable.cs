@@ -92,3 +92,18 @@ public class SymbolInfo
         };
     }
 }
+
+public static class SymbolLocationExtensions
+{
+    public static VmMemorySegment ToVmSegment(this SymbolInfo.SymbolLocation location)
+    {
+        return location switch
+        {
+            SymbolInfo.SymbolLocation.Static => VmMemorySegment.Static,
+            SymbolInfo.SymbolLocation.Field => VmMemorySegment.This,
+            SymbolInfo.SymbolLocation.Argument => VmMemorySegment.Arg,
+            SymbolInfo.SymbolLocation.Local => VmMemorySegment.Local,
+            _ => throw new ArgumentOutOfRangeException(nameof(location), location, null)
+        };
+    }
+}
