@@ -5,6 +5,8 @@ public class VmCompilationEngine
     private readonly Tokenizer _tokenizer;
     private readonly VmWriter _vmWriter;
     private SymbolsTable _symbolsTable;
+    private int _ifCounter = 0;
+    private int _whileCounter = 0;
 
     public VmCompilationEngine(string src)
     {
@@ -84,8 +86,6 @@ public class VmCompilationEngine
         Eat(")");
         
         CompileSubroutineBody();
-        
-        // If return type is void we still should return 0; 
     }
 
     private void CompileConstructor()
@@ -222,17 +222,23 @@ public class VmCompilationEngine
             
     }
     
-    private string CompileWhile()
+    private void CompileWhile()
     {
-        return $"<whileStatement>{Environment.NewLine}" +
-               $"<keyword> {Eat("while")} </keyword>{Environment.NewLine}" +
-               $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-               $"{CompileExpression()}" +
-               $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
-               $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-               $"{CompileStatements()}" +
-               $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}" +
-               $"</whileStatement>{Environment.NewLine}";
+        _vmWriter.WriteLabel($"WHILE_START{_whileCounter}");
+        
+        Eat("while");
+        Eat("(");
+        CompileExpressionNum();
+        Eat(")");
+        
+        _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
+        _vmWriter.WriteIf($"WHILE_END{_whileCounter}");
+        Eat("{");
+        CompileStatements();
+        Eat("}");
+        
+        _vmWriter.WriteGoto($"WHILE_START{_whileCounter}");
+        _vmWriter.WriteLabel($"WHILE_END{_whileCounter++}");
     }
 
     private void CompileReturn()
@@ -269,42 +275,35 @@ public class VmCompilationEngine
         return false;
     }
 
-    private string CompileIf()
+    private void CompileIf()
     {
-        var result = $"<ifStatement>{Environment.NewLine}" +
-                     $"<keyword> {Eat("if")} </keyword>{Environment.NewLine}" +
-                     $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-                     $"{CompileExpression()}" +
-                     $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}" +
-                     $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-                     $"{CompileStatements()}" +
-                     $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}";
+        Eat("if");
+        Eat("(");
+        CompileExpressionNum();
+        Eat(")");
+        _vmWriter.WriteIf($"IF_TRUE{_ifCounter}");
+        _vmWriter.WriteGoto($"IF_FALSE{_ifCounter}");
+        _vmWriter.WriteLabel($"IF_TRUE{_ifCounter}");
+        Eat("{");
+        CompileStatements();
+        Eat("}");
         
         if(_tokenizer.CurrentToken.Value is "else")
-            result += $"<keyword> {Eat("else")} </keyword>{Environment.NewLine}" +
-                      $"<symbol> {Eat("{")} </symbol>{Environment.NewLine}" +
-                      $"{CompileStatements()}" +
-                      $"<symbol> {Eat("}")} </symbol>{Environment.NewLine}";
-
-        return result + $"</ifStatement>{Environment.NewLine}";
-    }
-    
-    private string CompileExpression()
-    {
-        if (!IsTerm(_tokenizer.CurrentToken))
-            return "";
-
-        CompileTerm();
-        
-        if(_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
         {
-            EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
-            CompileTerm();
+            _vmWriter.WriteGoto($"IF_END{_ifCounter}");
+            _vmWriter.WriteLabel($"IF_FALSE{_ifCounter}");
+            Eat("else");
+            Eat("{");
+            CompileStatements();
+            Eat("}");
+            _vmWriter.WriteLabel($"IF_END{_ifCounter++}");
         }
-
-        return "";
+        else
+        {
+            _vmWriter.WriteLabel($"IF_FALSE{_ifCounter++}");
+        }
     }
-    
+
     private int CompileExpressionNum()
     {
         if (!IsTerm(_tokenizer.CurrentToken))
@@ -355,55 +354,6 @@ public class VmCompilationEngine
         return counter;
     }
 
-    private string CompileTerm()
-    {
-        var result = "";
-        var token = _tokenizer.CurrentToken;
-        if (token is IntConst)
-        {
-            var intConst = int.Parse(EatTokenOfType<IntConst>());
-            _vmWriter.WritePush(VmMemorySegment.Constant, intConst);
-        }
-        else if (token is StringConst)
-        {
-            result += $"<stringConstant> {EatTokenOfType<StringConst>()} </stringConstant>{Environment.NewLine}";
-        }
-        else if (token.Value is "true" or "false" or "null" or "this")
-        {
-            result +=
-                $"<keywordConstant> {EatAny("true", "false", "null", "this")} </keywordConstant>{Environment.NewLine}";
-        }
-        else if (token is Identifier)
-        {
-            result += $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}";
-
-            if (_tokenizer.CurrentToken.Value is "[")
-            {
-                result += $"<symbol> {Eat("[")} </symbol>{Environment.NewLine}" +
-                          $"{CompileExpression()}" +
-                          $"<symbol> {Eat("]")} </symbol>{Environment.NewLine}";
-            }
-            else if (_tokenizer.CurrentToken.Value is "(" or ".")
-            {
-                result += $"{CompileSubroutineCallBody()}";
-            }
-        }
-        else if (token.Value is "(")
-        {
-            result += $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-                      $"{CompileExpression()}" +
-                      $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
-        }
-        else if (token.Value is "-" or "~")
-        {
-            result += $"<symbol> {EatAny("-", "~")} </symbol>{Environment.NewLine}" +
-                      $"{CompileTerm()}";
-        }
-
-        return "";
-    }
-
-    
     private int CompileTermNum()
     {
         var result = "";
@@ -428,13 +378,14 @@ public class VmCompilationEngine
         {
             var name = EatTokenOfType<Identifier>();
 
+            // TODO: handle array
             if (_tokenizer.CurrentToken.Value is "[")
             {
-                // TODO: handle array
+
                 Eat("[");
                 counter += CompileExpressionNum();
                 Eat("]");
-            }
+            } // Subroutine call
             else if (_tokenizer.CurrentToken.Value is "(" or ".")
             {
                 if (_tokenizer.CurrentToken.Value is ".")
@@ -448,6 +399,13 @@ public class VmCompilationEngine
                 Eat(")");
                 _vmWriter.WriteCall(name, counter);
                 counter = 0;
+            } // Variable using
+            else
+            {
+                if(!_symbolsTable.TryGetSymbol(name, out var symbolInfo))
+                    throw new Exception("Unknown variable: " + name);
+                _vmWriter.WritePush(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+                counter++;
             }
         }
         else if (token.Value is "(")
@@ -474,21 +432,6 @@ public class VmCompilationEngine
         }
 
         return counter;
-    }
-
-    private string CompileSubroutineCallBody()
-    {
-        if(_tokenizer.CurrentToken.Value is "(")
-            return $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-                   $"{CompileExpressionList()}" +
-                   $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
-        if (_tokenizer.CurrentToken.Value is ".")
-            return $"<symbol> {Eat(".")} </symbol>{Environment.NewLine}" +
-                   $"<identifier> {EatTokenOfType<Identifier>()} </identifier>{Environment.NewLine}" +
-                   $"<symbol> {Eat("(")} </symbol>{Environment.NewLine}" +
-                   $"{CompileExpressionList()}" +
-                   $"<symbol> {Eat(")")} </symbol>{Environment.NewLine}";
-        throw new Exception($"Expected '(' or '.' but got {_tokenizer.CurrentToken.Value}");
     }
 
     private int CompileExpressionList()
