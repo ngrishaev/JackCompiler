@@ -102,7 +102,7 @@ public static class SymbolLocationExtensions
         {
             SymbolInfo.SymbolLocation.Static => VmMemorySegment.Static,
             SymbolInfo.SymbolLocation.Field => VmMemorySegment.This,
-            SymbolInfo.SymbolLocation.Argument => VmMemorySegment.Arg,
+            SymbolInfo.SymbolLocation.Argument => VmMemorySegment.Argument,
             SymbolInfo.SymbolLocation.Local => VmMemorySegment.Local,
             _ => throw new ArgumentOutOfRangeException(nameof(location), location, null)
         };

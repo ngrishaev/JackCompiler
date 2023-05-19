@@ -69,10 +69,52 @@ public class VmCompilationEngine
             CompileConstructor();
         else if (_tokenizer.CurrentToken.Value is "function")
             CompileFunction();
-        // else if (_tokenizer.CurrentToken.Value is "method")
-        //     CompileMethod();
+        else if (_tokenizer.CurrentToken.Value is "method")
+            CompileMethod();
         else 
             throw new Exception("Expected constructor, function, or method");
+    }
+
+    private void CompileMethod()
+    {
+        Eat("method");
+        EatReturnTypeDeclaration();
+        var subroutineName = EatTokenOfType<Identifier>();
+        _symbolsTable.StartSubroutine(subroutineName);
+        _symbolsTable.Define("this", _symbolsTable.ClassName, SymbolInfo.SymbolLocation.Argument);
+        Eat("(");
+        CompileParameterList();
+        Eat(")");
+
+        Eat("{");
+        
+        while (_tokenizer.CurrentToken.Value is "var")
+        {
+            Eat("var");
+            var varType = EatTypeDeclaration();
+            var varName = EatTokenOfType<Identifier>();
+
+            _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            while (_tokenizer.CurrentToken.Value is ",")
+            {
+                Eat(",");
+                varName = EatTokenOfType<Identifier>();
+                _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            }
+            
+            Eat(";");
+        }
+        
+        _vmWriter.WriteFunction(
+            _symbolsTable.ClassName + "." + _symbolsTable.SubroutineName ?? throw new Exception("Subroutine name is unknown"),
+            _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Local)
+        );
+        
+        _vmWriter.WritePush(VmMemorySegment.Argument, 0);
+        _vmWriter.WritePop(VmMemorySegment.Pointer, 0);
+
+        CompileStatements();
+        Eat("}");
     }
 
     private void CompileFunction()

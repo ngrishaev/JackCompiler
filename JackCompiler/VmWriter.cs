@@ -89,7 +89,7 @@ public class VmWriter
 public enum VmMemorySegment
 {
     Constant,
-    Arg,
+    Argument,
     Local,
     Static,
     This,
