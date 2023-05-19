@@ -251,6 +251,30 @@ public class VmCompilationEngineTests
                         $"push constant 0{Environment.NewLine}" +
                         $"return{Environment.NewLine}", result);
     }
+    
+    [Test]    
+    public void TestConstructor()
+    {
+        var engine = new VmCompilationEngine("class Test {" +
+                                             "    field int x, y;" +
+                                             "    static int s;" +
+                                             "    constructor Test new() {" +		
+                                             "        return this;" +
+                                             "    }" +
+                                             "}");
+        
+        var result = engine.CompileClass();
+        Assert.AreEqual($"function Main.main 1{Environment.NewLine}" +
+                        $"call Test.new 0{Environment.NewLine}" +
+                        $"pop local 0{Environment.NewLine}" +
+                        $"push local 0{Environment.NewLine}" +
+                        $"call Test.bar 1{Environment.NewLine}" +
+                        $"call Output.printInt 1{Environment.NewLine}" +
+                        $"pop temp 0{Environment.NewLine}" +
+                        $"push constant 0{Environment.NewLine}" +
+                        $"return{Environment.NewLine}", result);
+    }
+    
     [Test]    
     public void TestOtherObjectMethodCallAsPartOfExpression()
     {
@@ -269,6 +293,7 @@ public class VmCompilationEngineTests
                         $"pop local 0{Environment.NewLine}" +
                         $"push local 0{Environment.NewLine}" +
                         $"call Test.bar 1{Environment.NewLine}" +
+                        $"call Output.printInt 1{Environment.NewLine}" +
                         $"pop temp 0{Environment.NewLine}" +
                         $"push constant 0{Environment.NewLine}" +
                         $"return{Environment.NewLine}", result);

@@ -13,6 +13,7 @@ public class SymbolsTable
     public SymbolsTable(string className)
     {
         _className = className;
+        _classSymbols = new Dictionary<string, SymbolInfo>();
     }
     
     public void StartSubroutine(string name)

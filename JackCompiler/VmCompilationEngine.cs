@@ -90,14 +90,43 @@ public class VmCompilationEngine
 
     private void CompileConstructor()
     {
-        throw new NotImplementedException();
-        EatAny("constructor", "function", "method");
+        Eat("constructor");
         EatReturnTypeDeclaration();
-        EatTokenOfType<Identifier>();
+        var subroutineName = EatTokenOfType<Identifier>();
+        _symbolsTable.StartSubroutine(subroutineName);
         Eat("(");
         CompileParameterList();
         Eat(")");
-        CompileSubroutineBody();
+        
+        Eat("{");
+        while (_tokenizer.CurrentToken.Value is "var")
+        {
+            Eat("var");
+            var varType = EatTypeDeclaration();
+            var varName = EatTokenOfType<Identifier>();
+
+            _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            while (_tokenizer.CurrentToken.Value is ",")
+            {
+                Eat(",");
+                varName = EatTokenOfType<Identifier>();
+                _symbolsTable.Define(varName, varType, SymbolInfo.SymbolLocation.Local);
+            }
+            
+            Eat(";");
+        }
+        
+        _vmWriter.WriteFunction(
+            _symbolsTable.ClassName + "." + _symbolsTable.SubroutineName ?? throw new Exception("Subroutine name is unknown"),
+            _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Local)
+        );
+        
+        _vmWriter.WritePush(VmMemorySegment.Constant, _symbolsTable.GetCount(SymbolInfo.SymbolLocation.Field));
+        _vmWriter.WriteCall("Memory.alloc", 1);
+        _vmWriter.WritePop(VmMemorySegment.Pointer, 0);
+
+        CompileStatements();
+        Eat("}");
     }
 
     private void CompileSubroutineBody()
@@ -184,10 +213,10 @@ public class VmCompilationEngine
         Eat("do");
         
         var identifier = EatTokenOfType<Identifier>();
-        var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbolInfo);
+        var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbol);
             
         var funcName = symbolFound
-            ? symbolInfo.Type
+            ? symbol.Type
             : identifier;
 
         if (_tokenizer.CurrentToken.Value is ".")
@@ -203,7 +232,7 @@ public class VmCompilationEngine
 
         if(symbolFound)
         {
-            _vmWriter.WritePush(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+            _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
             count++;
         }
         _vmWriter.WriteCall(funcName, count);
@@ -407,36 +436,54 @@ public class VmCompilationEngine
             _vmWriter.WritePush(VmMemorySegment.Pointer, 0);
             counter++;
         }
-        else if (token is Identifier)
+        else if (token is Identifier) // variable or subroutine call
         {
-            var name = EatTokenOfType<Identifier>();
+            var identifier = EatTokenOfType<Identifier>();
 
             // TODO: handle array
-            if (_tokenizer.CurrentToken.Value is "[")
+            if (_tokenizer.CurrentToken.Value is "[") // Array
             {
                 Eat("[");
                 counter += CompileExpressionNum();
                 Eat("]");
             } // Subroutine call
-            else if (_tokenizer.CurrentToken.Value is "(" or ".")
+            else if (_tokenizer.CurrentToken.Value is "(" or ".") // subroutine on self or other class\variable
             {
-                if (_tokenizer.CurrentToken.Value is ".")
+                if (_tokenizer.CurrentToken.Value is ".") // other
                 {
-                    name += Eat(".");
-                    name += EatTokenOfType<Identifier>();
+                    var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbol);
+                    
+                    var subroutineName = symbolFound
+                        ? symbol.Type
+                        : identifier; 
+                    subroutineName += Eat(".");
+                    subroutineName += EatTokenOfType<Identifier>();
+                    Eat("(");
+                    counter += CompileExpressionList();
+                    Eat(")");
+                    if(symbolFound)
+                    {
+                        _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
+                        counter++;
+                    }
+                    _vmWriter.WriteCall(subroutineName, counter);
+                    counter = 1;
                 }
+                else // self
+                {
+                    Eat("(");
+                    counter += CompileExpressionList();
+                    Eat(")");
 
-                Eat("(");
-                counter += CompileExpressionList();
-                Eat(")");
-                _vmWriter.WriteCall(name, counter);
-                counter = 0;
-            } // Variable using
-            else
+                    _vmWriter.WriteCall(identifier, counter);
+                    counter = 1;
+                }
+            } 
+            else // variable
             {
-                if(!_symbolsTable.TryGetSymbol(name, out var symbolInfo))
-                    throw new Exception("Unknown variable: " + name);
-                _vmWriter.WritePush(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+                if(!_symbolsTable.TryGetSymbol(identifier, out var symbol))
+                    throw new Exception("Unknown variable: " + identifier);
+                _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
                 counter++;
             }
         }
