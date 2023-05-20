@@ -256,28 +256,38 @@ public class VmCompilationEngine
         
         var identifier = EatTokenOfType<Identifier>();
         var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbol);
-            
-        var funcName = symbolFound
+
+        var subroutineName = symbolFound
             ? symbol.Type
             : identifier;
+        
+        var count = 0;
 
         if (_tokenizer.CurrentToken.Value is ".")
         {
-            funcName += Eat(".");
-            funcName += EatTokenOfType<Identifier>();
+            subroutineName += Eat(".");
+            subroutineName += EatTokenOfType<Identifier>();
+            
+            if(symbolFound)
+            {
+                _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
+                count++;
+            }
+        }
+        else
+        {
+            subroutineName = _symbolsTable.ClassName + "." + subroutineName;
+            _vmWriter.WritePush(VmMemorySegment.Pointer, 0);
+            count++;
         }
 
         Eat("(");
-        var count = CompileExpressionList();
+        count += CompileExpressionList();
         Eat(")");
         Eat(";");
 
-        if(symbolFound)
-        {
-            _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
-            count++;
-        }
-        _vmWriter.WriteCall(funcName, count);
+
+        _vmWriter.WriteCall(subroutineName, count);
         _vmWriter.WritePop(VmMemorySegment.Temp, 0);
     }
     
@@ -285,23 +295,36 @@ public class VmCompilationEngine
     {
         Eat("let");
         var varName = EatTokenOfType<Identifier>();
-
-        // TODO: Handle array
-        if (_tokenizer.CurrentToken.Value is "[")
-        {
-            Eat("[");
-            CompileExpressionNum();
-            Eat("]");
-        }
-
-        Eat("=");
-        CompileExpressionNum();
-        Eat(";");
         
-        if(!_symbolsTable.TryGetSymbol(varName, out var symbolInfo))
+        if(!_symbolsTable.TryGetSymbol(varName, out var symbol))
             throw new Exception($"Symbol {varName} not found");
         
-        _vmWriter.WritePop(symbolInfo.Location.ToVmSegment(), symbolInfo.Index);
+        if (_tokenizer.CurrentToken.Value is "[")
+        {
+            _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
+            Eat("[");
+            CompileExpression();
+            Eat("]");
+            _vmWriter.WriteArithmetic(ArithmeticCommand.Add);
+            Eat("=");
+            CompileExpression();
+            Eat(";");
+            
+            _vmWriter.WritePop(VmMemorySegment.Temp, 0);
+            _vmWriter.WritePop(VmMemorySegment.Pointer, 1);
+            _vmWriter.WritePush(VmMemorySegment.Temp, 0);
+            _vmWriter.WritePop(VmMemorySegment.That, 0);
+        }
+        else
+        {
+            Eat("=");
+            CompileExpression();
+            Eat(";");
+            
+            _vmWriter.WritePop(symbol.Location.ToVmSegment(), symbol.Index);
+        }
+
+        
             
     }
     
@@ -311,7 +334,7 @@ public class VmCompilationEngine
         
         Eat("while");
         Eat("(");
-        CompileExpressionNum();
+        CompileExpression();
         Eat(")");
         
         _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
@@ -329,7 +352,7 @@ public class VmCompilationEngine
         Eat("return");
         
         if (IsTerm(_tokenizer.CurrentToken))
-             CompileExpressionNum();
+             CompileExpression();
         else
             _vmWriter.WritePush(VmMemorySegment.Constant, 0);
         
@@ -362,7 +385,7 @@ public class VmCompilationEngine
     {
         Eat("if");
         Eat("(");
-        CompileExpressionNum();
+        CompileExpression();
         Eat(")");
         _vmWriter.WriteIf($"IF_TRUE{_ifCounter}");
         _vmWriter.WriteGoto($"IF_FALSE{_ifCounter}");
@@ -387,7 +410,7 @@ public class VmCompilationEngine
         }
     }
 
-    private int CompileExpressionNum()
+    private int CompileExpression()
     {
         if (!IsTerm(_tokenizer.CurrentToken))
             return 0;
@@ -481,45 +504,51 @@ public class VmCompilationEngine
         else if (token is Identifier) // variable or subroutine call
         {
             var identifier = EatTokenOfType<Identifier>();
-
-            // TODO: handle array
+            
             if (_tokenizer.CurrentToken.Value is "[") // Array
             {
+                if(!_symbolsTable.TryGetSymbol(identifier, out var symbol))
+                    throw new Exception("Unknown array: " + identifier);
+                
+                _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
                 Eat("[");
-                counter += CompileExpressionNum();
+                CompileExpression();
                 Eat("]");
+                _vmWriter.WriteArithmetic(ArithmeticCommand.Add);
+                _vmWriter.WritePop(VmMemorySegment.Pointer, 1);
+                _vmWriter.WritePush(VmMemorySegment.That, 0);
+                counter++;
             } // Subroutine call
             else if (_tokenizer.CurrentToken.Value is "(" or ".") // subroutine on self or other class\variable
             {
+                var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbol);
+                    
+                var subroutineName = symbolFound
+                    ? symbol.Type
+                    : identifier; 
+                
                 if (_tokenizer.CurrentToken.Value is ".") // other
                 {
-                    var symbolFound = _symbolsTable.TryGetSymbol(identifier, out var symbol);
-                    
-                    var subroutineName = symbolFound
-                        ? symbol.Type
-                        : identifier; 
                     subroutineName += Eat(".");
                     subroutineName += EatTokenOfType<Identifier>();
-                    Eat("(");
-                    counter += CompileExpressionList();
-                    Eat(")");
                     if(symbolFound)
                     {
                         _vmWriter.WritePush(symbol.Location.ToVmSegment(), symbol.Index);
                         counter++;
                     }
-                    _vmWriter.WriteCall(subroutineName, counter);
-                    counter = 1;
                 }
                 else // self
                 {
-                    Eat("(");
-                    counter += CompileExpressionList();
-                    Eat(")");
-
-                    _vmWriter.WriteCall(identifier, counter);
-                    counter = 1;
+                    subroutineName = _symbolsTable.ClassName + "." + subroutineName;
+                    _vmWriter.WritePush(VmMemorySegment.Pointer, 0);
+                    counter++;
                 }
+                
+                Eat("(");
+                counter += CompileExpressionList();
+                Eat(")");
+                _vmWriter.WriteCall(subroutineName, counter);
+                counter = 1;
             } 
             else // variable
             {
@@ -532,7 +561,7 @@ public class VmCompilationEngine
         else if (token.Value is "(")
         {
             Eat("(");
-            counter += CompileExpressionNum();
+            counter += CompileExpression();
             Eat(")");
         }
         else if (token.Value is "-" or "~")
@@ -557,12 +586,12 @@ public class VmCompilationEngine
 
     private int CompileExpressionList()
     {
-        var counter = CompileExpressionNum();
+        var counter = CompileExpression();
         
         while (_tokenizer.CurrentToken.Value is ",")
         {
             Eat(",");
-            counter = CompileExpressionNum();
+            counter += CompileExpression();
         }
 
         return counter;

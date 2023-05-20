@@ -316,6 +316,79 @@ public class VmCompilationEngineTests
                         $"push constant 0{Environment.NewLine}" +
                         $"return{Environment.NewLine}", result);
     }
+    
+        [Test]    
+        public void TestSelfMethodCallInExpression()
+        {
+            var engine = new VmCompilationEngine("class Test {" +
+                                                 "    field int x, y;" +
+                                                 "    static int s;" +
+                                                 "    constructor Test new() {" +
+                                                 "        do Output.printInt(bar(3, 4));" +
+                                                 "        return this;" +
+                                                 "    }" +
+                                                 "    method int bar(int x, int y){" +
+                                                 "        return x + y;" +
+                                                 "    }" +
+                                                 "}");
+            
+            var result = engine.CompileClass();
+            Assert.AreEqual($"function Test.new 0{Environment.NewLine}" +
+                            $"push constant 2{Environment.NewLine}" +
+                            $"call Memory.alloc 1{Environment.NewLine}" +
+                            $"pop pointer 0{Environment.NewLine}" +
+                            $"push pointer 0{Environment.NewLine}" +
+                            $"push constant 3{Environment.NewLine}" +
+                            $"push constant 4{Environment.NewLine}" +
+                            $"call Test.bar 3{Environment.NewLine}" +
+                            $"call Output.printInt 1{Environment.NewLine}" +
+                            $"pop temp 0{Environment.NewLine}" +
+                            $"push pointer 0{Environment.NewLine}" +
+                            $"return{Environment.NewLine}" +
+                            $"function Test.bar 0{Environment.NewLine}" +
+                            $"push argument 0{Environment.NewLine}" +
+                            $"pop pointer 0{Environment.NewLine}" +
+                            $"push argument 1{Environment.NewLine}" +
+                            $"push argument 2{Environment.NewLine}" +
+                            $"add{Environment.NewLine}" +
+                            $"return{Environment.NewLine}", result);
+        }
+        
+                [Test]    
+        public void TestSelfMethodCall()
+        {
+            var engine = new VmCompilationEngine("class Test {" +
+                                                 "    field int x, y;" +
+                                                 "    static int s;" +
+                                                 "    constructor Test new() {" +
+                                                 "        do bar(3, 4);" +
+                                                 "        return this;" +
+                                                 "    }" +
+                                                 "    method int bar(int x, int y){" +
+                                                 "        return x + y;" +
+                                                 "    }" +
+                                                 "}");
+            
+            var result = engine.CompileClass();
+            Assert.AreEqual($"function Test.new 0{Environment.NewLine}" +
+                            $"push constant 2{Environment.NewLine}" +
+                            $"call Memory.alloc 1{Environment.NewLine}" +
+                            $"pop pointer 0{Environment.NewLine}" +
+                            $"push pointer 0{Environment.NewLine}" +
+                            $"push constant 3{Environment.NewLine}" +
+                            $"push constant 4{Environment.NewLine}" +
+                            $"call Test.bar 3{Environment.NewLine}" +
+                            $"pop temp 0{Environment.NewLine}" +
+                            $"push pointer 0{Environment.NewLine}" +
+                            $"return{Environment.NewLine}" +
+                            $"function Test.bar 0{Environment.NewLine}" +
+                            $"push argument 0{Environment.NewLine}" +
+                            $"pop pointer 0{Environment.NewLine}" +
+                            $"push argument 1{Environment.NewLine}" +
+                            $"push argument 2{Environment.NewLine}" +
+                            $"add{Environment.NewLine}" +
+                            $"return{Environment.NewLine}", result);
+        }
 
 
 }
