@@ -5,8 +5,7 @@ public class VmCompilationEngine
     private readonly Tokenizer _tokenizer;
     private readonly VmWriter _vmWriter;
     private SymbolsTable _symbolsTable;
-    private int _ifCounter = 0;
-    private int _whileCounter = 0;
+    private int _branchingCounter = 0;
 
     public VmCompilationEngine(string src)
     {
@@ -325,7 +324,8 @@ public class VmCompilationEngine
     
     private void CompileWhile()
     {
-        _vmWriter.WriteLabel($"WHILE_START{_whileCounter}");
+        var branchingCounter = _branchingCounter++;
+        _vmWriter.WriteLabel($"WHILE_START{branchingCounter}");
         
         Eat("while");
         Eat("(");
@@ -333,13 +333,13 @@ public class VmCompilationEngine
         Eat(")");
         
         _vmWriter.WriteArithmetic(ArithmeticCommand.Not);
-        _vmWriter.WriteIf($"WHILE_END{_whileCounter}");
+        _vmWriter.WriteIf($"WHILE_END{branchingCounter}");
         Eat("{");
         CompileStatements();
         Eat("}");
         
-        _vmWriter.WriteGoto($"WHILE_START{_whileCounter}");
-        _vmWriter.WriteLabel($"WHILE_END{_whileCounter++}");
+        _vmWriter.WriteGoto($"WHILE_START{branchingCounter}");
+        _vmWriter.WriteLabel($"WHILE_END{branchingCounter}");
     }
 
     private void CompileReturn()
@@ -378,30 +378,31 @@ public class VmCompilationEngine
 
     private void CompileIf()
     {
+        var branchingCounter = _branchingCounter++;
         Eat("if");
         Eat("(");
         CompileExpression();
         Eat(")");
-        _vmWriter.WriteIf($"IF_TRUE{_ifCounter}");
-        _vmWriter.WriteGoto($"IF_FALSE{_ifCounter}");
-        _vmWriter.WriteLabel($"IF_TRUE{_ifCounter}");
+        _vmWriter.WriteIf($"IF_TRUE{branchingCounter}");
+        _vmWriter.WriteGoto($"IF_FALSE{branchingCounter}");
+        _vmWriter.WriteLabel($"IF_TRUE{branchingCounter}");
         Eat("{");
         CompileStatements();
         Eat("}");
         
         if(_tokenizer.CurrentToken.Value is "else")
         {
-            _vmWriter.WriteGoto($"IF_END{_ifCounter}");
-            _vmWriter.WriteLabel($"IF_FALSE{_ifCounter}");
+            _vmWriter.WriteGoto($"IF_END{branchingCounter}");
+            _vmWriter.WriteLabel($"IF_FALSE{branchingCounter}");
             Eat("else");
             Eat("{");
             CompileStatements();
             Eat("}");
-            _vmWriter.WriteLabel($"IF_END{_ifCounter++}");
+            _vmWriter.WriteLabel($"IF_END{branchingCounter}");
         }
         else
         {
-            _vmWriter.WriteLabel($"IF_FALSE{_ifCounter++}");
+            _vmWriter.WriteLabel($"IF_FALSE{branchingCounter}");
         }
     }
 
