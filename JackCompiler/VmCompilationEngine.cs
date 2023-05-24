@@ -413,7 +413,7 @@ public class VmCompilationEngine
 
         var counter = CompileTerm();
 
-        if (_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
+        while (_tokenizer.CurrentToken.Value is "+" or "-" or "*" or "/" or "&" or "|" or "<" or ">" or "=")
         {
             var op = EatAny("+", "-", "*", "/", "&", "|", "<", ">", "=");
             counter += CompileTerm();
