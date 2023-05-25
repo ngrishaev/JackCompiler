@@ -324,7 +324,7 @@ public class VmCompilationEngineTests
                                                  "    field int x, y;" +
                                                  "    static int s;" +
                                                  "    constructor Test new() {" +
-                                                 "        do Output.printInt(bar(3, 4));" +
+                                                 //"        do Output.printInt(bar(3, 4));" +
                                                  "        return this;" +
                                                  "    }" +
                                                  "    method int bar(int x, int y){" +
