@@ -354,7 +354,7 @@ public class VmCompilationEngineTests
                             $"return{Environment.NewLine}", result);
         }
         
-                [Test]    
+        [Test]    
         public void TestSelfMethodCall()
         {
             var engine = new VmCompilationEngine("class Test {" +
@@ -389,6 +389,4 @@ public class VmCompilationEngineTests
                             $"add{Environment.NewLine}" +
                             $"return{Environment.NewLine}", result);
         }
-
-
 }
